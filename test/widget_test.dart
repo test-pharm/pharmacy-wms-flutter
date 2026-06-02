@@ -11,9 +11,10 @@ void main() {
     await AuthService.initialize();
 
     await tester.pumpWidget(const PharmacyLoginApp());
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 3));
 
-    expect(find.text('PHARMACY LOGISTICS'), findsOneWidget);
-    expect(find.text('LOGIN'), findsOneWidget);
+    expect(find.text('Pharmacy WMS'), findsNWidgets(2));
+    expect(find.text('SIGN IN'), findsOneWidget);
   });
 }
