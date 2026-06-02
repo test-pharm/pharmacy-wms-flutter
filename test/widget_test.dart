@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:graduation_project/Models/UserRoleModel.dart';
-import 'package:graduation_project/main.dart';
+import 'package:pharmacy_wms/Models/UserRoleModel.dart';
+import 'package:pharmacy_wms/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
