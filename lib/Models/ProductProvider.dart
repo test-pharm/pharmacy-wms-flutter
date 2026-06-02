@@ -25,10 +25,15 @@ class ProductProvider extends ChangeNotifier {
   int _lowStockThreshold = 100;
   int _expiringSoonDays = 30;
   Future<void> loadThresholds() async {
-    _lowStockThreshold = await ThresholdService.getLowStockThreshold();
-    _expiringSoonDays = await ThresholdService.getExpiringSoonDays();
-  
-}
+    // Fetch both thresholds in parallel instead of sequentially
+    final results = await Future.wait([
+      ThresholdService.getLowStockThreshold(),
+      ThresholdService.getExpiringSoonDays(),
+    ]);
+    _lowStockThreshold = results[0];
+    _expiringSoonDays = results[1];
+  }
+
 
  final Map<String, Map<String, dynamic>> _pendingOverrides = {
 
@@ -56,24 +61,25 @@ class ProductProvider extends ChangeNotifier {
   int getCriticalAlertsCount() => expiredCount + expiringSoonCount;
   int get lowStockCount =>      _products.where((product) => product.quantity < _lowStockThreshold).length;
   Future<void> loadProducts() async {
-    try { await loadThresholds(); } catch (_) {}
     if (!AuthService.isAuthenticated) {
       clear(notify: true);
       return;
-    
-}    _loading = true;
+    }
+    _loading = true;
     _error = null;
     notifyListeners();
     try {
-      await _replaceProductsFromApi();
-    
-} catch (e) {
+      // Load thresholds and products in parallel — reduces startup time significantly
+      await Future.wait([
+        loadThresholds().catchError((_) {}),
+        _replaceProductsFromApi(),
+      ]);
+    } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
-    
-}    _loading = false;
+    }
+    _loading = false;
     notifyListeners();
-  
-}
+  }
 
 
   Future<String?> addProduct(Map<String, dynamic> body) async {
@@ -180,13 +186,16 @@ bool notify = false
 
 
   Future<void> _replaceProductsFromApi() async {
-    _products = await _fetchProductsFromApi();
+    // Fire all three network calls simultaneously instead of sequentially
+    final results = await Future.wait([
+      _fetchProductsFromApi(),
+      AlertService.reloadThresholds(),
+      MaterialService.reloadThresholds(),
+    ]);
+    _products = results[0] as List<MaterialModel>;
     _applyPendingOverrides();
-    await AlertService.reloadThresholds();
-    await MaterialService.reloadThresholds();
     _syncDerivedState();
-  
-}
+  }
 
 
   Future<void> _translateProductNames() async {
