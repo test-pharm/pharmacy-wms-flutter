@@ -56,7 +56,7 @@ class _ExpiryChangeDialogState extends State<ExpiryChangeDialog> {
       );
       if (!mounted) return;
       Navigator.pop(context, true);
-      showToast(context, context.tr.expiryChangeSubmitted);
+      showToast(context, context.tr.expiryChangeSubmitted, type: ToastType.success);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

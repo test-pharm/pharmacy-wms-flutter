@@ -20,7 +20,7 @@ class _DispatchMaterialWizardState extends State<DispatchMaterialWizard> {  int 
 
   Future<void> _finishAndDispatch() async {    final tr = context.tr;    if (_sessionItems.isEmpty) return;    setState(() => _saving = true);    String? error;    int totalQty = 0;    final createdBy = AuthService.currentUser?.fullName ?? tr.unknownUser;    final invNum = _invoiceController.text.trim();    for (final item in _sessionItems) {      try {        final result = await OrderService.dispatchFefo({          'productId': int.tryParse(item.productId),          'quantity': item.qty,          'invoiceNumber': invNum.isNotEmpty ? invNum : null,          'createdBy': createdBy,        });        if (result != null) {          totalQty += item.qty;        }      } catch (e) {        if (error == null) error = e.toString().replaceFirst('Exception: ', '');      }    }
     await widget.provider.loadProducts();
-    setState(() => _saving = false);    if (error != null) {      showToast(context, error, backgroundColor: Colors.red);    } else {      showToast(context, tr.unitsDispatchedSummary(totalQty, _sessionItems.length));    }    if (context.mounted) Navigator.of(context).pop(true);  }
+    setState(() => _saving = false);    if (error != null) {      showToast(context, error, type: ToastType.error);    } else {      showToast(context, tr.unitsDispatchedSummary(totalQty, _sessionItems.length), type: ToastType.success);    }    if (context.mounted) Navigator.of(context).pop(true);  }
 
   void _clearForm() {    _searchController.clear();    _qtyController.clear();    _selectedProduct = null;    _query = '';    _inlineError = null;  }
 

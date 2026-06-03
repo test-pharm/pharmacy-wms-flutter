@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
@@ -81,13 +82,13 @@ class _LoginPageState extends State<LoginPage>    with SingleTickerProviderState
 }
   @override  Widget build(BuildContext context) {
     final maxWidth = MediaQuery.of(context).size.width.clamp(400.0, 560.0);
-    return Scaffold(      body: Stack(        children: [          Positioned.fill(            child: Image.asset(              backgroundImagePath,              fit: BoxFit.cover,              errorBuilder: (context, error, stackTrace) =>                  Container(color: const Color(0xFFDFF3F4)),            ),          ),          Positioned.fill(            child: Container(color: const Color(0xFFBFEFF0).withOpacity(0.18)),          ),          Center(            child: SlideTransition(              position: _slideAnim,              child: FadeTransition(                opacity: _fadeAnim,                child: ConstrainedBox(                  constraints: BoxConstraints(                    maxWidth: maxWidth,                    minWidth: 320,                  ),                  child: _buildLoginCard(context),                ),              ),            ),          ),        ],      ),    );
+    return Scaffold(      body: Stack(        fit: StackFit.expand,        children: [          Container(            decoration: const BoxDecoration(              gradient: LinearGradient(                colors: [Color(0xFF0A0E21), Color(0xFF1A237E), Color(0xFF0D47A1)],                begin: Alignment.topLeft,                end: Alignment.bottomRight,              ),            ),          ),          Positioned(top: -80, right: -60,              child: _GlowCircle(color: Colors.blueAccent, size: 300)),          Positioned(bottom: -100, left: -80,              child: _GlowCircle(color: Colors.purpleAccent, size: 250)),          Center(            child: SlideTransition(              position: _slideAnim,              child: FadeTransition(                opacity: _fadeAnim,                child: ConstrainedBox(                  constraints: BoxConstraints(                    maxWidth: maxWidth,                    minWidth: 320,                  ),                  child: ClipRRect(                    borderRadius: BorderRadius.circular(20),                    child: BackdropFilter(                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),                      child: _buildLoginCard(context),                    ),                  ),                ),              ),            ),          ),        ],      ),    );
   
 }
   Widget _buildLoginCard(BuildContext context) {
     final tr = context.tr;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(      elevation: 28,      borderRadius: BorderRadius.circular(18),      child: Container(        decoration: BoxDecoration(          color: isDark ? const Color(0xFF1E1E2E) : Colors.white,          borderRadius: BorderRadius.circular(18),        ),        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 36),        child: Form(          key: _formKey,          child: Column(            mainAxisSize: MainAxisSize.min,            children: [                            Text(
+    return Material(      elevation: 28,      borderRadius: BorderRadius.circular(20),      child: Container(        decoration: BoxDecoration(          color: Colors.white.withOpacity(0.08),          borderRadius: BorderRadius.circular(20),          border: Border.all(color: Colors.white.withOpacity(0.15)),        ),        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 36),        child: Form(          key: _formKey,          child: Column(            mainAxisSize: MainAxisSize.min,            children: [                            Text(
                 tr.appTitle,
                 style: const TextStyle(
                   fontSize: 22,
@@ -124,6 +125,24 @@ required String label, required Widget child
   
 }
 }
+class _GlowCircle extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _GlowCircle({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+            colors: [color.withOpacity(0.18), Colors.transparent]),
+      ),
+    );
+  }
+}
+
 class _RegisterSheet extends StatefulWidget {
   const _RegisterSheet();
   @override  State<_RegisterSheet> createState() => _RegisterSheetState();

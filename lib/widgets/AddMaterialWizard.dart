@@ -161,7 +161,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     final tr = context.tr;
     final selected = _selectedExistingProduct;
     if (selected == null) {
-      _toast(tr.productNotFound);
+      _toast(tr.productNotFound, type: ToastType.warning);
       return false;
     
 }    if (!_formKey.currentState!.validate()) return false;
@@ -240,19 +240,18 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
 }
     setState(() => _saving = false);
     if (error != null) {
-      _toast(error);
+      _toast(error, type: ToastType.error);
     
 } else {
-      _toast(tr.stockUpdated);
+      _toast(tr.stockUpdated, type: ToastType.success);
     
 }    if (mounted) Navigator.of(context).pop(true);
   
 }
 
-  void _toast(String message) {
-    showToast(context, message);
-  
-}
+  void _toast(String message, {ToastType type = ToastType.info}) {
+    showToast(context, message, type: type);
+  }
 
 
   Future<void> _pickDate(bool forExisting) async {

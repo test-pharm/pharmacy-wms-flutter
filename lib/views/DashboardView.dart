@@ -21,6 +21,7 @@ import 'package:pharmacy_wms/main.dart';
 import 'package:pharmacy_wms/views/UserInfo.dart';
 
 import 'package:pharmacy_wms/widgets/skeletons.dart';
+import 'package:pharmacy_wms/widgets/animated_counter.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -194,7 +195,8 @@ e.value
   Widget _kpiCard(    BuildContext context,    String title,    String value, {
     required IconData icon,    Color? color,  
 }) {
-    return Container(      width: 180,      padding: const EdgeInsets.all(14),      decoration: BoxDecoration(        borderRadius: BorderRadius.circular(12),        color: Theme.of(context).cardColor,        border:            color != null ? Border.all(color: color.withOpacity(0.3)) : null,      ),      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Icon(icon, color: color),          const SizedBox(height: 8),          Text(            title,            style: TextStyle(              color: Theme.of(context).brightness == Brightness.dark                  ? Colors.grey[400]                  : Colors.grey[600],            ),          ),          const SizedBox(height: 6),          Text(            value,            style: TextStyle(              fontSize: 22,              fontWeight: FontWeight.bold,              color: color,            ),          ),        ],      ),    );
+    final c = color;
+    return Container(      width: 180,      padding: const EdgeInsets.all(14),      decoration: BoxDecoration(        borderRadius: BorderRadius.circular(14),        gradient: c != null            ? LinearGradient(                colors: [c.withOpacity(0.12), c.withOpacity(0.04)],                begin: Alignment.topLeft,                end: Alignment.bottomRight,              )            : null,        color: c == null ? Theme.of(context).cardColor : null,        border: c != null ? Border.all(color: c.withOpacity(0.25)) : null,        boxShadow: [          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),        ],      ),      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Icon(icon, color: color),          const SizedBox(height: 8),          Text(            title,            style: TextStyle(              color: Theme.of(context).brightness == Brightness.dark                  ? Colors.grey[400]                  : Colors.grey[600],            ),          ),          const SizedBox(height: 6),          AnimatedCounter(            value: int.tryParse(value) ?? 0,            style: TextStyle(              fontSize: 22,              fontWeight: FontWeight.bold,              color: color,            ),          ),        ],      ),    );
   
 }
   Widget _alertCard(    BuildContext context,    String title,    String body,    IconData icon,    Color color,  ) {

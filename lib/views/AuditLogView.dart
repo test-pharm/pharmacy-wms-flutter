@@ -3,6 +3,7 @@ import 'package:pharmacy_wms/Models/UserRoleModel.dart';
 import 'package:pharmacy_wms/Models/app_localizations.dart';
 import 'package:pharmacy_wms/Models/auditLogModel.dart';
 import 'package:pharmacy_wms/Services/auditLogService.dart';
+import 'package:pharmacy_wms/widgets/empty_state.dart';
 
 class AuditLogPage extends StatefulWidget {
   const AuditLogPage({super.key});
@@ -16,6 +17,20 @@ class _AuditLogPageState extends State<AuditLogPage> {
   bool _loading = true;
   String? _error;
   final _searchCtrl = TextEditingController();
+  bool _filtersExpanded = false;
+  String _actionFilter = '';
+  String _entityTypeFilter = '';
+  final _fromDateCtrl = TextEditingController();
+  final _toDateCtrl = TextEditingController();
+
+  int get _activeFilterCount {
+    int c = 0;
+    if (_actionFilter.isNotEmpty) c++;
+    if (_entityTypeFilter.isNotEmpty) c++;
+    if (_fromDateCtrl.text.isNotEmpty) c++;
+    if (_toDateCtrl.text.isNotEmpty) c++;
+    return c;
+  }
 
   @override
   void initState() {
@@ -26,6 +41,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _fromDateCtrl.dispose();
+    _toDateCtrl.dispose();
     super.dispose();
   }
 
@@ -43,19 +60,31 @@ class _AuditLogPageState extends State<AuditLogPage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  void _clearFilters() {
+    setState(() {
+      _actionFilter = '';
+      _entityTypeFilter = '';
+      _fromDateCtrl.clear();
+      _toDateCtrl.clear();
+      _filter();
+    });
+  }
+
   void _filter() {
     final query = _searchCtrl.text.toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-        _filtered = List.from(_logs);
-      } else {
-        _filtered = _logs.where((log) {
-          return log.action.toLowerCase().contains(query) ||
-              log.userName.toLowerCase().contains(query) ||
-              log.entityType.toLowerCase().contains(query) ||
-              (log.details?.toLowerCase().contains(query) ?? false);
-        }).toList();
-      }
+      _filtered = _logs.where((log) {
+        final matchesSearch = query.isEmpty ||
+            log.action.toLowerCase().contains(query) ||
+            log.userName.toLowerCase().contains(query) ||
+            log.entityType.toLowerCase().contains(query) ||
+            (log.details?.toLowerCase().contains(query) ?? false);
+        final matchesAction = _actionFilter.isEmpty || log.action.contains(_actionFilter);
+        final matchesEntityType = _entityTypeFilter.isEmpty || log.entityType == _entityTypeFilter;
+        final matchesFrom = _fromDateCtrl.text.isEmpty || (log.timestamp.isAfter(DateTime.tryParse(_fromDateCtrl.text) ?? DateTime(2000)));
+        final matchesTo = _toDateCtrl.text.isEmpty || (log.timestamp.isBefore(DateTime.tryParse(_toDateCtrl.text) ?? DateTime(2100)));
+        return matchesSearch && matchesAction && matchesEntityType && matchesFrom && matchesTo;
+      }).toList();
     });
   }
 
@@ -92,18 +121,61 @@ class _AuditLogPageState extends State<AuditLogPage> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: tr.searchAuditLog,
-                prefixIcon: const Icon(Icons.search, size: 20),
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: tr.searchAuditLog,
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          isDense: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onChanged: (_) => _filter(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Stack(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => setState(() => _filtersExpanded = !_filtersExpanded),
+                          icon: AnimatedRotation(
+                            turns: _filtersExpanded ? 0.5 : 0,
+                            duration: const Duration(milliseconds: 200),
+                            child: const Icon(Icons.tune, size: 18),
+                          ),
+                          label: Text(_filtersExpanded ? 'Hide Filters' : 'Filters'),
+                        ),
+                        if (_activeFilterCount > 0)
+                          Positioned(
+                            top: 0, right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
+                              child: Text('$_activeFilterCount',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10)),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (_activeFilterCount > 0) ...[
+                      const SizedBox(width: 4),
+                      TextButton(onPressed: _clearFilters, child: const Text('Clear All')),
+                    ],
+                  ],
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-              ),
-              onChanged: (_) => _filter(),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  child: _filtersExpanded ? _buildFilterPanel(tr, isDark) : const SizedBox.shrink(),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -121,6 +193,82 @@ class _AuditLogPageState extends State<AuditLogPage> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterPanel(AppLocalizations tr, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Action',
+                    hintText: 'Filter by action',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onChanged: (v) { _actionFilter = v; _filter(); },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Entity Type',
+                    hintText: 'e.g. User, Product',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onChanged: (v) { _entityTypeFilter = v; _filter(); },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _fromDateCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'From Date',
+                    hintText: 'YYYY-MM-DD',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onChanged: (_) => _filter(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _toDateCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'To Date',
+                    hintText: 'YYYY-MM-DD',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onChanged: (_) => _filter(),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -146,7 +294,11 @@ class _AuditLogPageState extends State<AuditLogPage> {
       );
     }
     if (_filtered.isEmpty) {
-      return Center(child: Text(tr.noAuditLogs));
+      return const EmptyState(
+        icon: Icons.history_toggle_off,
+        title: 'No Audit Logs',
+        subtitle: 'Actions will appear here as users interact with the system.',
+      );
     }
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
