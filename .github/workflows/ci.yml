@@ -59,9 +59,29 @@ jobs:
       - run: flutter config --enable-windows-desktop
       - run: flutter build windows --release
 
-      - name: Zip the build
+      - name: Bundle runtime DLLs and zip
+        shell: powershell
         run: |
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath pharmacy-wms-windows.zip
+          $relPath = if (Test-Path "build\windows\runner\Release") { "build\windows\runner\Release" } else { "build\windows\x64\runner\Release" }
+          # Find and copy required VC++ runtime DLLs
+          $dlls = @("vcruntime140.dll","vcruntime140_1.dll","msvcp140.dll","msvcp140_1.dll","msvcp140_2.dll")
+          # Search order: VS redist dir, System32, SysWOW64
+          $searchDirs = @()
+          $vsRoot = "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise"
+          $redistRoot = "$vsRoot\VC\Redist\MSVC"
+          if (Test-Path $redistRoot) {
+            $searchDirs += Get-ChildItem "$redistRoot\*\x64\Microsoft.VC*.CRT" | Select-Object -ExpandProperty FullName
+          }
+          $searchDirs += "C:\Windows\System32"
+          $dlls | ForEach-Object {
+            $found = $null
+            foreach ($dir in $searchDirs) {
+              $p = Join-Path $dir $_
+              if (Test-Path $p) { $found = $p; break }
+            }
+            if ($found) { Copy-Item $found "$relPath\$_" }
+          }
+          Compress-Archive -Path "$relPath\*" -DestinationPath pharmacy-wms-windows.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
