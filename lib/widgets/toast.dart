@@ -22,13 +22,17 @@ void showToast(BuildContext context, String message, {Color? backgroundColor, To
   };
   final color = backgroundColor ?? colors[type]!;
   _currentToast = OverlayEntry(
-    builder: (_) => Material(
-      type: MaterialType.transparency,
-      child: _ToastWidget(
-        message: message,
-        color: color,
-        icon: icons[type]!,
-        duration: duration,
+    builder: (ctx) => PositionedDirectional(
+      top: MediaQuery.of(ctx).padding.top + 8,
+      end: 16,
+      child: Material(
+        type: MaterialType.transparency,
+        child: _ToastWidget(
+          message: message,
+          color: color,
+          icon: icons[type]!,
+          duration: duration,
+        ),
       ),
     ),
   );
@@ -79,39 +83,35 @@ class _ToastWidgetState extends State<_ToastWidget> with SingleTickerProviderSta
       position: _slide,
       child: FadeTransition(
         opacity: _fade,
-        child: PositionedDirectional(
-          top: MediaQuery.of(context).padding.top + 8,
-          end: 16,
-          child: Container(
-            width: 340,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2E),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: widget.color.withOpacity(0.4)),
-              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12)],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(children: [
-                  Icon(widget.icon, color: widget.color, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(widget.message, style: const TextStyle(color: Colors.white, fontSize: 13))),
-                ]),
-                const SizedBox(height: 10),
-                AnimatedBuilder(
-                  animation: _progressCtrl,
-                  builder: (_, __) => LinearProgressIndicator(
-                    value: 1.0 - _progressCtrl.value,
-                    backgroundColor: Colors.white12,
-                    valueColor: AlwaysStoppedAnimation(widget.color),
-                    minHeight: 2,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        child: Container(
+          width: 340,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E2E),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: widget.color.withOpacity(0.4)),
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12)],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(children: [
+                Icon(widget.icon, color: widget.color, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(widget.message, style: const TextStyle(color: Colors.white, fontSize: 13))),
+              ]),
+              const SizedBox(height: 10),
+              AnimatedBuilder(
+                animation: _progressCtrl,
+                builder: (_, __) => LinearProgressIndicator(
+                  value: 1.0 - _progressCtrl.value,
+                  backgroundColor: Colors.white12,
+                  valueColor: AlwaysStoppedAnimation(widget.color),
+                  minHeight: 2,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
