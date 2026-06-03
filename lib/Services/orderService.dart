@@ -103,41 +103,6 @@ class OrderService {
 
 
 
-  static Future<void> refundOrder({
-    required int productId,
-    required int quantity,
-    String? invoiceNumber,
-    String? createdBy,
-    String? expiryDate,
-  }) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$_baseUrl/refund'),
-            headers: AuthService.authHeaders,
-            body: jsonEncode({
-              'productId': productId,
-              'quantity': quantity,
-              'invoiceNumber': invoiceNumber,
-              'createdBy': createdBy,
-              'expiryDate': expiryDate,
-            }),
-          )
-          .timeout(const Duration(seconds: 45));
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        _orders.insert(0, OrderModel.fromJson(decoded as Map<String, dynamic>));
-        changes.value++;
-      } else {
-        final decoded = jsonDecode(response.body);
-        final msg = decoded is Map ? (decoded['message'] ?? 'Refund failed').toString() : 'Refund failed';
-        throw Exception(msg);
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   static Future<bool> checkInvoiceExists(String invoiceNumber) async {
     try {
       final response = await http

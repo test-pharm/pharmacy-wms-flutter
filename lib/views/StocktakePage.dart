@@ -24,7 +24,7 @@ class _StocktakePageState extends State<StocktakePage> {
   @override  Widget build(BuildContext context) {
     final provider = ProductProvider.of(context);
     final products = provider.products.toList();
-    final grouped = _groupByLocation(products);
+      final grouped = _groupByCategory(products);
     return Padding(      padding: const EdgeInsets.all(18),      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Text(            context.tr.stocktake,            style: Theme.of(context).textTheme.headlineSmall?.copyWith(                  fontWeight: FontWeight.bold,                ),          ),          const SizedBox(height: 6),          Text(            context.tr.stocktakeDesc,            style: TextStyle(              color: Theme.of(context).brightness == Brightness.dark                  ? Colors.white60                  : Colors.black54,              fontSize: 14,            ),          ),          const SizedBox(height: 24),          Expanded(            child: _buildContent(context, products, grouped),          ),        ],      ),    );
   
 }
@@ -36,10 +36,8 @@ products.length
 context.tr.totalItems
 }',                        style: const TextStyle(                            fontSize: 18, fontWeight: FontWeight.bold)),                    const SizedBox(height: 4),                    Text('${
 grouped.length
-} ${
-context.tr.storageLocationsLabel
-}',                        style: TextStyle(                            color: isDark ? Colors.white60 : Colors.black54)),                  ],                ),              ),              ElevatedButton.icon(                onPressed: () => _generateStocktakePdf(context, products),                icon: const Icon(Icons.picture_as_pdf),                label: Text(context.tr.generateStocktake),                style: ElevatedButton.styleFrom(                  backgroundColor: const Color(0xFF0A6B6E),                  foregroundColor: Colors.white,                  padding:                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),                ),              ),            ],          ),        ),        const SizedBox(height: 20),        Expanded(          child: ListView(            children: grouped.entries.map((entry) {
-              return LocationGroupWidget(location: entry.key, items: entry.value, isDark: isDark);
+} ${context.tr.categoriesLabel}',                        style: TextStyle(                            color: isDark ? Colors.white60 : Colors.black54)),                  ],                ),              ),              ElevatedButton.icon(                onPressed: () => _generateStocktakePdf(context, products),                icon: const Icon(Icons.picture_as_pdf),                label: Text(context.tr.generateStocktake),                style: ElevatedButton.styleFrom(                  backgroundColor: const Color(0xFF0A6B6E),                  foregroundColor: Colors.white,                  padding:                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),                ),              ),            ],          ),        ),        const SizedBox(height: 20),        Expanded(          child: ListView(            children: grouped.entries.map((entry) {
+              return LocationGroupWidget(location: entry.key, items: entry.value, isDark: isDark, isCategory: true);
             
 }).toList(),          ),        ),      ],    );
   
@@ -62,7 +60,7 @@ context.tr.storageLocationsLabel
       final expiredCount = products.where((p) => p.batches.any((b) => b.isExpired)).length;
       final lowStockCount = products.where((p) => p.quantity < 20).length;
 
-      final grouped = _groupByLocation(products);
+    final grouped = _groupByCategory(products);
       final sortedLocations = grouped.keys.toList()..sort();
 
       pdf.addPage(
@@ -297,14 +295,14 @@ DateTime.now().millisecondsSinceEpoch
 },            icon: const Icon(Icons.share),            label: Text(context.tr.saveOrShare),          ),          TextButton(            onPressed: () => Navigator.pop(ctx),            child: Text(context.tr.cancel),          ),        ],      ),    );
   
 }
-  Map<String, List<MaterialModel>> _groupByLocation(      List<MaterialModel> products) {
+  Map<String, List<MaterialModel>> _groupByCategory(      List<MaterialModel> products) {
     final map = <String, List<MaterialModel>>{
 
 };
     for (final p in products) {
-      final loc = p.location.isEmpty ? '' : p.location;
-      map.putIfAbsent(loc, () => []);
-      map[loc]!.add(p);
+      final cat = p.category.isEmpty ? context.tr.uncategorized : p.category;
+      map.putIfAbsent(cat, () => []);
+      map[cat]!.add(p);
     
 }    for (final list in map.values) {
       list.sort((a, b) => a.name.compareTo(b.name));
@@ -335,12 +333,14 @@ class LocationGroupWidget extends StatefulWidget {
   final String location;
   final List<MaterialModel> items;
   final bool isDark;
+  final bool isCategory;
 
   const LocationGroupWidget({
     super.key,
     required this.location,
     required this.items,
     required this.isDark,
+    this.isCategory = false,
   });
 
   @override
@@ -379,7 +379,7 @@ class _LocationGroupWidgetState extends State<LocationGroupWidget> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.location_on_outlined, size: 18, color: widget.isDark ? Colors.white54 : Colors.black54),
+                  Icon(widget.isCategory ? Icons.category_outlined : Icons.location_on_outlined, size: 18, color: widget.isDark ? Colors.white54 : Colors.black54),
                   const SizedBox(width: 8),
                   Text(
                     label,

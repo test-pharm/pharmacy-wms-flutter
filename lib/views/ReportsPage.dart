@@ -680,7 +680,7 @@ context.tr.error
         final status = MaterialService.getMaterialStatus(m);
         final colorHex = statusColors[status] ?? '000000';
         final rowIdx = sheet.maxRows;
-        sheet.appendRow([          TextCellValue(m.name),          TextCellValue(m.sku),          TextCellValue(m.category),          TextCellValue(m.quantity.toString()),          TextCellValue(m.unit.isEmpty ? '-' : m.unit),          TextCellValue(_formatDate(m.expiryDate)),          TextCellValue(status),          TextCellValue(m.location.isEmpty ? '-' : m.location),        ]);
+        sheet.appendRow([          TextCellValue(m.name),          TextCellValue(m.sku),          TextCellValue(m.category),          TextCellValue(m.quantity.toString()),          TextCellValue(m.unit.isEmpty ? '-' : m.unit),          TextCellValue(_formatDate(m.expiryDate)),          TextCellValue(status),          TextCellValue(m.supplier.isEmpty ? '-' : m.supplier),        ]);
         final fg = ExcelColor.fromInt(int.parse(colorHex, radix: 16) | 0xFF000000);
         final bg = ExcelColor.fromInt((int.parse(colorHex, radix: 16) & 0xFFFFFF) | 0x20000000);
         sheet.cell(CellIndex.indexByColumnRow(            columnIndex: 6, rowIndex: rowIdx)).cellStyle = CellStyle(          fontColorHex: fg, backgroundColorHex: bg,        );

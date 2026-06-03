@@ -133,6 +133,10 @@ count == 1 ? '' : 's'
   String get logNumber => isArabic ? 'رقم السجل' : 'Log Number';
   String get expiryDate => isArabic ? 'تاريخ الانتهاء' : 'Expiry Date';
   String get storageLocation => isArabic ? 'موقع التخزين' : 'Storage Location';
+  String get supplier => isArabic ? 'المورد' : 'Supplier';
+  String get recipient => isArabic ? 'المستلم' : 'Recipient';
+  String get hintSupplierExample => isArabic ? 'مثال: المورد العالمي' : 'e.g. Global Supplier Co.';
+  String get hintRecipientExample => isArabic ? 'مثال: أحمد محمد' : 'e.g. Ahmed Mohamed';
   String get category => isArabic ? 'الفئة' : 'Category';
   String get categoryId => isArabic ? 'معرف الفئة' : 'Category ID';
   String get status => isArabic ? 'الحالة' : 'Status';

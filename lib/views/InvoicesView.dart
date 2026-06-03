@@ -143,7 +143,6 @@ class _InvoicesPageState extends State<InvoicesPage> {
       OrderType.add => Colors.green,
       OrderType.export => Colors.blue,
       OrderType.edit => Colors.orange,
-      OrderType.refund => Colors.purple,
     };
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -180,23 +179,6 @@ class _InvoicesPageState extends State<InvoicesPage> {
               ],
             ),
           ),
-          if (order.type == OrderType.export)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
-              child: SizedBox(
-                height: 30,
-                child: OutlinedButton.icon(
-                  onPressed: () => _showRefundDialog(context, order, onRefresh: onRefresh),
-                  icon: const Icon(Icons.replay, size: 14),
-                  label: Text(context.tr.refundLabel, style: const TextStyle(fontSize: 11)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.purple,
-                    side: const BorderSide(color: Colors.purple),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                ),
-              ),
-            ),
           _badge(_localizedOrderType(order.type), typeColor),
         ],
       ),
@@ -452,7 +434,6 @@ class _InvoicesPageState extends State<InvoicesPage> {
       case OrderType.add: return context.tr.orderTypeAdd;
       case OrderType.export: return context.tr.orderTypeExport;
       case OrderType.edit: return context.tr.orderTypeEdit;
-      case OrderType.refund: return context.tr.orderTypeRefund;
     }
   }
 
@@ -461,86 +442,6 @@ class _InvoicesPageState extends State<InvoicesPage> {
     final m = local.month.toString().padLeft(2, '0');
     final d = local.day.toString().padLeft(2, '0');
     return '${local.year}-$m-$d';
-  }
-
-  void _showRefundDialog(BuildContext context, OrderModel order, {VoidCallback? onRefresh}) {
-    final qtyCtrl = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('${context.tr.refundLabel} - ${order.productName}'),
-        content: SizedBox(
-          width: 300,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${context.tr.availableToRefund}: ${order.quantity} ${order.unit}'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: qtyCtrl,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr.quantityToRefund,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(context.tr.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final qty = int.tryParse(qtyCtrl.text.trim());
-              if (qty == null || qty <= 0 || qty > order.quantity) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(context.tr.enterValidQuantity)),
-                );
-                return;
-              }
-              final pid = order.productId;
-              if (pid == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(context.tr.cannotRefund)),
-                );
-                return;
-              }
-              try {
-                await OrderService.refundOrder(
-                  productId: int.parse(pid),
-                  quantity: qty,
-                  invoiceNumber: order.invoiceNumber,
-                  createdBy: AuthService.currentUser?.fullName ?? 'system',
-                  expiryDate: order.expiryDate,
-                );
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(context.tr.refundSuccess(qty, order.unit, order.productName))),
-                  );
-                }
-                onRefresh?.call();
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(context.tr.refundFailedWithError('$e')), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, foregroundColor: Colors.white),
-            child: Text(context.tr.refundLabel),
-          ),
-        ],
-      ),
-    );
   }
 
   String _formatExpiry(String raw) {

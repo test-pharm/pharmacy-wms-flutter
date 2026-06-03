@@ -53,14 +53,14 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
   final _newSkuController = TextEditingController();
   final _newQuantityController = TextEditingController();
   final _newUnitController = TextEditingController();
-  final _newLocationController = TextEditingController();
+  final _newSupplierController = TextEditingController();
   final _newCategoryController = TextEditingController();
   DateTime? _newExpiryDate;
   final _nameFocus = FocusNode();
   final _skuFocus = FocusNode();
   final _unitFocus = FocusNode();
   final _categoryFocus = FocusNode();
-  final _locationFocus = FocusNode();
+  final _supplierFocus = FocusNode();
   final _quantityFocus = FocusNode();
   final List<_SessionMaterial> _sessionMaterials = [];
   bool _submitted = false;
@@ -91,13 +91,13 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     _newSkuController.dispose();
     _newQuantityController.dispose();
     _newUnitController.dispose();
-    _newLocationController.dispose();
+    _newSupplierController.dispose();
     _newCategoryController.dispose();
     _nameFocus.dispose();
     _skuFocus.dispose();
     _unitFocus.dispose();
     _categoryFocus.dispose();
-    _locationFocus.dispose();
+    _supplierFocus.dispose();
     _quantityFocus.dispose();
     super.dispose();
   }
@@ -193,10 +193,10 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     if (qty <= 0 || name.isEmpty || sku.isEmpty) return false;
     if (_newExpiryDate == null) return false;
     final unit = _newUnitController.text.trim();
-    final location = _newLocationController.text.trim();
+    final supplier = _newSupplierController.text.trim();
     final category = _newCategoryController.text.trim();
     final body = <String, dynamic>{
-      'materialName': name,      'materialSKU': sku,      'quantity': qty,      'unit': unit,      'logNumber': '',      'expiryDate': _newExpiryDate!.toUtc().toIso8601String(),      'storageLocation': location,      'isAvailable': true,      'categoryId': 0,      'categoryName': category,    
+      'materialName': name,      'materialSKU': sku,      'quantity': qty,      'unit': unit,      'logNumber': '',      'expiryDate': _newExpiryDate!.toUtc().toIso8601String(),      'supplier': supplier,      'isAvailable': true,      'categoryId': 0,      'categoryName': category,    
 };
     setState(() {
       _sessionMaterials.add(_SessionMaterial(        mode: 'new',        productId: null,        name: name,        sku: sku,        quantity: qty,        unit: unit,        logNumber: '',        categoryId: 0,        expiryDate: _newExpiryDate!.toUtc().toIso8601String(),        body: body,      ));
@@ -285,7 +285,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     _newSkuController.clear();
     _newQuantityController.clear();
     _newUnitController.clear();
-    _newLocationController.clear();
+    _newSupplierController.clear();
     _newCategoryController.clear();
     _newExpiryDate = null;
   }
@@ -408,7 +408,7 @@ p.sku
 }
   Widget _buildExistingInfoBox(AppLocalizations tr, bool isDark) {
     final p = _selectedExistingProduct!;
-    return Container(      width: double.infinity,      padding: const EdgeInsets.all(14),      decoration: BoxDecoration(        color: const Color(0xFF3B82F6).withOpacity(0.12),        borderRadius: BorderRadius.circular(12),        border: Border.all(          color: const Color(0xFF3B82F6).withOpacity(0.3),        ),      ),      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Text(            tr.currentInfo,            style: const TextStyle(              fontSize: 13,              fontWeight: FontWeight.bold,              color: Color(0xFF3B82F6),            ),          ),          const SizedBox(height: 8),          _infoRow(context.tr.materialName, p.name),          _infoRow(context.tr.sku, p.sku),          _infoRow(context.tr.quantity, p.quantity.toString()),          _infoRow(context.tr.unit, p.unit),          _infoRow(context.tr.storageLocation, p.location),          if (p.expiryDate.isNotEmpty)            _infoRow(context.tr.expiryDate, p.expiryDate),        ],      ),    );
+    return Container(      width: double.infinity,      padding: const EdgeInsets.all(14),      decoration: BoxDecoration(        color: const Color(0xFF3B82F6).withOpacity(0.12),        borderRadius: BorderRadius.circular(12),        border: Border.all(          color: const Color(0xFF3B82F6).withOpacity(0.3),        ),      ),      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Text(            tr.currentInfo,            style: const TextStyle(              fontSize: 13,              fontWeight: FontWeight.bold,              color: Color(0xFF3B82F6),            ),          ),          const SizedBox(height: 8),          _infoRow(context.tr.materialName, p.name),          _infoRow(context.tr.sku, p.sku),          _infoRow(context.tr.quantity, p.quantity.toString()),          _infoRow(context.tr.unit, p.unit),          _infoRow(context.tr.supplier, p.supplier),          if (p.expiryDate.isNotEmpty)            _infoRow(context.tr.expiryDate, p.expiryDate),        ],      ),    );
   
 }
   Widget _infoRow(String label, String value) {
@@ -440,7 +440,7 @@ p.sku
         _buildFocusField(
           controller: _newUnitController,
           focusNode: _unitFocus,
-          nextFocusNode: _newCategoryController.text.isEmpty ? _categoryFocus : _locationFocus,
+          nextFocusNode: _newCategoryController.text.isEmpty ? _categoryFocus : _supplierFocus,
           label: tr.unit,
           hintText: tr.hintUnitExamples,
           icon: Icons.scale_outlined,
@@ -450,7 +450,7 @@ p.sku
         _buildFocusField(
           controller: _newCategoryController,
           focusNode: _categoryFocus,
-          nextFocusNode: _locationFocus,
+          nextFocusNode: _supplierFocus,
           label: tr.category,
           hintText: tr.hintCategoryExample,
           icon: Icons.category_outlined,
@@ -458,12 +458,12 @@ p.sku
           textInputAction: TextInputAction.next,
         ),
         _buildFocusField(
-          controller: _newLocationController,
-          focusNode: _locationFocus,
+          controller: _newSupplierController,
+          focusNode: _supplierFocus,
           nextFocusNode: _quantityFocus,
-          label: tr.storageLocation,
-          hintText: tr.hintLocationExample,
-          icon: Icons.location_on_outlined,
+          label: tr.supplier,
+          hintText: tr.hintSupplierExample,
+          icon: Icons.business_outlined,
           isDark: isDark,
           textInputAction: TextInputAction.next,
         ),

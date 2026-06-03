@@ -16,7 +16,7 @@ class _ProductEditDialogState extends State<ProductEditDialog> {
   late TextEditingController _nameCtrl;
   late TextEditingController _skuCtrl;
   late TextEditingController _unitCtrl;
-  late TextEditingController _locationCtrl;
+  late TextEditingController _supplierCtrl;
   String _category = '';
   bool _saving = false;
 
@@ -26,7 +26,7 @@ class _ProductEditDialogState extends State<ProductEditDialog> {
     _nameCtrl = TextEditingController(text: widget.product.name);
     _skuCtrl = TextEditingController(text: widget.product.sku);
     _unitCtrl = TextEditingController(text: widget.product.unit);
-    _locationCtrl = TextEditingController(text: widget.product.location);
+    _supplierCtrl = TextEditingController(text: widget.product.supplier);
     _category = widget.product.category;
   }
 
@@ -35,7 +35,7 @@ class _ProductEditDialogState extends State<ProductEditDialog> {
     _nameCtrl.dispose();
     _skuCtrl.dispose();
     _unitCtrl.dispose();
-    _locationCtrl.dispose();
+    _supplierCtrl.dispose();
     super.dispose();
   }
 
@@ -58,7 +58,7 @@ class _ProductEditDialogState extends State<ProductEditDialog> {
       'materialName': _nameCtrl.text.trim(),
       'materialSKU': _skuCtrl.text.trim(),
       'unit': _unitCtrl.text.trim(),
-      'storageLocation': _locationCtrl.text.trim(),
+      'supplier': _supplierCtrl.text.trim(),
       'categoryName': _category,
     };
     try {
@@ -124,8 +124,8 @@ class _ProductEditDialogState extends State<ProductEditDialog> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _locationCtrl,
-              decoration: InputDecoration(labelText: context.tr.storageLocation, border: const OutlineInputBorder()),
+              controller: _supplierCtrl,
+              decoration: InputDecoration(labelText: context.tr.supplier, border: const OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
