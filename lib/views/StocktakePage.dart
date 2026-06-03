@@ -39,28 +39,12 @@ grouped.length
 } ${
 context.tr.storageLocationsLabel
 }',                        style: TextStyle(                            color: isDark ? Colors.white60 : Colors.black54)),                  ],                ),              ),              ElevatedButton.icon(                onPressed: () => _generateStocktakePdf(context, products),                icon: const Icon(Icons.picture_as_pdf),                label: Text(context.tr.generateStocktake),                style: ElevatedButton.styleFrom(                  backgroundColor: const Color(0xFF0A6B6E),                  foregroundColor: Colors.white,                  padding:                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),                ),              ),            ],          ),        ),        const SizedBox(height: 20),        Expanded(          child: ListView(            children: grouped.entries.map((entry) {
-              return _locationGroup(context, entry.key, entry.value, isDark);
+              return LocationGroupWidget(location: entry.key, items: entry.value, isDark: isDark);
             
 }).toList(),          ),        ),      ],    );
   
 }
-  Widget _locationGroup(    BuildContext context,    String location,    List<MaterialModel> items,    bool isDark,  ) {
-    final label = location.isEmpty ? context.tr.unspecified : location;
-    return Card(      margin: const EdgeInsets.only(bottom: 12),      color: isDark ? const Color(0xFF1A2F35) : Colors.white,      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Container(            width: double.infinity,            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),            decoration: BoxDecoration(              color: (isDark ? Colors.white10 : Colors.black)                  .withOpacity(0.04),              borderRadius:                  const BorderRadius.vertical(top: Radius.circular(12)),            ),            child: Row(              children: [                Icon(Icons.location_on_outlined,                    size: 18, color: isDark ? Colors.white54 : Colors.black54),                const SizedBox(width: 8),                Text(                  label,                  style: TextStyle(                    fontWeight: FontWeight.bold,                    fontSize: 15,                    color: isDark ? Colors.white : Colors.black87,                  ),                ),                const Spacer(),                Text(                  '${
-items.length
-} ${
-context.tr.itemsLabel
-}',                  style: TextStyle(                      color: isDark ? Colors.white54 : Colors.black54,                      fontSize: 13),                ),              ],            ),          ),          ...items.map((item) => ListTile(                dense: true,                title: Text(item.name,                    style: TextStyle(                        color: isDark ? Colors.white : Colors.black87)),                subtitle: Text('${
-context.tr.skuPrefix
-}${
-item.sku
-}',                    style: TextStyle(                        fontSize: 12,                        color: isDark ? Colors.white54 : Colors.black54)),                trailing: Text('${
-context.tr.qtyPrefix
-}${
-item.quantity
-}',                    style: TextStyle(                        fontWeight: FontWeight.w600,                        color: isDark ? Colors.white70 : Colors.black87)),              )),        ],      ),    );
-  
-}
+  // Replaced by LocationGroupWidget
 
 
   Future<void> _generateStocktakePdf(
@@ -204,7 +188,6 @@ item.quantity
                     }
                   }
                 }
-
                 return [
                   pw.Container(
                     margin: const pw.EdgeInsets.only(top: 14, bottom: 6),
@@ -346,4 +329,101 @@ d.day.toString().padLeft(2, '0')
     
 }  
 }
+}
+
+class LocationGroupWidget extends StatefulWidget {
+  final String location;
+  final List<MaterialModel> items;
+  final bool isDark;
+
+  const LocationGroupWidget({
+    super.key,
+    required this.location,
+    required this.items,
+    required this.isDark,
+  });
+
+  @override
+  State<LocationGroupWidget> createState() => _LocationGroupWidgetState();
+}
+
+class _LocationGroupWidgetState extends State<LocationGroupWidget> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = context.tr;
+    final label = widget.location.isEmpty ? tr.unspecified : widget.location;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: widget.isDark ? const Color(0xFF1A2F35) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: BoxDecoration(
+                color: (widget.isDark ? Colors.white10 : Colors.black).withOpacity(0.04),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(12),
+                  topRight: const Radius.circular(12),
+                  bottomLeft: Radius.circular(_expanded ? 0 : 12),
+                  bottomRight: Radius.circular(_expanded ? 0 : 12),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 18, color: widget.isDark ? Colors.white54 : Colors.black54),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: widget.isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${widget.items.length} ${tr.itemsLabel}',
+                    style: TextStyle(color: widget.isDark ? Colors.white54 : Colors.black54, fontSize: 13),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: widget.isDark ? Colors.white54 : Colors.black54,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: _expanded
+                ? Column(
+                    children: widget.items
+                        .map((item) => ListTile(
+                              dense: true,
+                              title: Text(item.name, style: TextStyle(color: widget.isDark ? Colors.white : Colors.black87)),
+                              subtitle: Text('${tr.skuPrefix}${item.sku}',
+                                  style: TextStyle(fontSize: 12, color: widget.isDark ? Colors.white54 : Colors.black54)),
+                              trailing: Text('${tr.qtyPrefix}${item.quantity}',
+                                  style: TextStyle(fontWeight: FontWeight.w600, color: widget.isDark ? Colors.white70 : Colors.black87)),
+                            ))
+                        .toList(),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
 import 'package:pharmacy_wms/Models/app_localizations.dart';
 import 'package:pharmacy_wms/Models/auditLogModel.dart';
 import 'package:pharmacy_wms/Services/auditLogService.dart';
 import 'package:pharmacy_wms/widgets/empty_state.dart';
+import 'package:pharmacy_wms/widgets/skeletons.dart';
 
 class AuditLogPage extends StatefulWidget {
   const AuditLogPage({super.key});
@@ -198,6 +200,22 @@ class _AuditLogPageState extends State<AuditLogPage> {
     );
   }
 
+  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+    final initial = DateTime.tryParse(controller.text) ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+        _filter();
+      });
+    }
+  }
+
   Widget _buildFilterPanel(AppLocalizations tr, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -243,28 +261,32 @@ class _AuditLogPageState extends State<AuditLogPage> {
               Expanded(
                 child: TextField(
                   controller: _fromDateCtrl,
+                  readOnly: true,
                   decoration: InputDecoration(
                     labelText: 'From Date',
                     hintText: 'YYYY-MM-DD',
                     isDense: true,
+                    suffixIcon: const Icon(Icons.calendar_today, size: 16),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   ),
-                  onChanged: (_) => _filter(),
+                  onTap: () => _selectDate(context, _fromDateCtrl),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: _toDateCtrl,
+                  readOnly: true,
                   decoration: InputDecoration(
                     labelText: 'To Date',
                     hintText: 'YYYY-MM-DD',
                     isDense: true,
+                    suffixIcon: const Icon(Icons.calendar_today, size: 16),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   ),
-                  onChanged: (_) => _filter(),
+                  onTap: () => _selectDate(context, _toDateCtrl),
                 ),
               ),
             ],
@@ -276,7 +298,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
 
   Widget _buildContent(AppLocalizations tr, bool isDark) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AuditLogSkeleton();
     }
     if (_error != null) {
       return Center(
@@ -311,128 +333,175 @@ class _AuditLogPageState extends State<AuditLogPage> {
   }
 }
 
-class _LogCard extends StatelessWidget {
+class _LogCard extends StatefulWidget {
   final AuditLogModel log;
   final bool isDark;
   const _LogCard({required this.log, required this.isDark});
 
   @override
-  Widget build(BuildContext context) {
-    final tr = context.tr;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 3),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(_actionIcon, size: 18, color: _actionColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    log.action,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: log.roleLabel == 'Manager'
-                        ? Colors.blue.withOpacity(0.1)
-                        : Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    log.roleLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: log.roleLabel == 'Manager' ? Colors.blue : Colors.green,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.person_outline, size: 13,
-                    color: isDark ? Colors.white60 : Colors.black54),
-                const SizedBox(width: 4),
-                Text(log.userName,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white60 : Colors.black54)),
-                const SizedBox(width: 16),
-                Icon(Icons.access_time, size: 13,
-                    color: isDark ? Colors.white60 : Colors.black54),
-                const SizedBox(width: 4),
-                Text(log.formattedTimestamp,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white60 : Colors.black54)),
-              ],
-            ),
-            if (log.details != null && log.details!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                log.details!,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? Colors.white54 : Colors.black45,
-                  fontStyle: FontStyle.italic,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+  State<_LogCard> createState() => _LogCardState();
+}
+
+class _LogCardState extends State<_LogCard> {
+  bool _expanded = false;
+
+  Color get _actionColor {
+    final act = widget.log.action.toLowerCase();
+    if (act.contains('create') || act.contains('add')) return Colors.green;
+    if (act.contains('delete') || act.contains('remove')) return Colors.red;
+    if (act.contains('update') || act.contains('edit') || act.contains('change')) return Colors.orange;
+    if (act.contains('login')) return Colors.blue;
+    if (act.contains('register')) return Colors.teal;
+    return Colors.grey;
   }
 
   IconData get _actionIcon {
-    if (log.action.contains('Create') || log.action.contains('Add')) {
-      return Icons.add_circle_outline;
-    }
-    if (log.action.contains('Delete') || log.action.contains('Remove')) {
-      return Icons.remove_circle_outline;
-    }
-    if (log.action.contains('Update') ||
-        log.action.contains('Edit') ||
-        log.action.contains('Change')) {
-      return Icons.edit_outlined;
-    }
-    if (log.action.contains('Login')) {
-      return Icons.login;
-    }
-    if (log.action.contains('Register')) {
-      return Icons.person_add_outlined;
-    }
+    final act = widget.log.action;
+    if (act.contains('Create') || act.contains('Add')) return Icons.add_circle_outline;
+    if (act.contains('Delete') || act.contains('Remove')) return Icons.remove_circle_outline;
+    if (act.contains('Update') || act.contains('Edit') || act.contains('Change')) return Icons.edit_outlined;
+    if (act.contains('Login')) return Icons.login;
+    if (act.contains('Register')) return Icons.person_add_outlined;
     return Icons.info_outline;
   }
 
-  Color get _actionColor {
-    if (log.action.contains('Create') || log.action.contains('Add')) {
-      return Colors.green;
-    }
-    if (log.action.contains('Delete') || log.action.contains('Remove')) {
-      return Colors.red;
-    }
-    if (log.action.contains('Update') ||
-        log.action.contains('Edit') ||
-        log.action.contains('Change')) {
-      return Colors.orange;
-    }
-    if (log.action.contains('Login')) {
-      return Colors.blue;
-    }
-    if (log.action.contains('Register')) {
-      return Colors.teal;
-    }
-    return Colors.grey;
+  @override
+  Widget build(BuildContext context) {
+    final hasDetails = widget.log.details != null && widget.log.details!.isNotEmpty;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      elevation: _expanded ? 3 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: _expanded
+            ? BorderSide(color: widget.isDark ? Colors.white24 : Colors.black12, width: 1)
+            : BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: hasDetails ? () => setState(() => _expanded = !_expanded) : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(_actionIcon, size: 18, color: _actionColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.log.action,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                  ),
+                  if (hasDetails)
+                    Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                      color: widget.isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: widget.log.roleLabel == 'Manager'
+                          ? Colors.blue.withOpacity(0.1)
+                          : Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.log.roleLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: widget.log.roleLabel == 'Manager' ? Colors.blue : Colors.green,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.person_outline, size: 13, color: widget.isDark ? Colors.white60 : Colors.black54),
+                  const SizedBox(width: 4),
+                  Text(widget.log.userName,
+                      style: TextStyle(fontSize: 12, color: widget.isDark ? Colors.white60 : Colors.black54)),
+                  const SizedBox(width: 16),
+                  Icon(Icons.access_time, size: 13, color: widget.isDark ? Colors.white60 : Colors.black54),
+                  const SizedBox(width: 4),
+                  Text(widget.log.formattedTimestamp,
+                      style: TextStyle(fontSize: 12, color: widget.isDark ? Colors.white60 : Colors.black54)),
+                ],
+              ),
+              if (hasDetails) ...[
+                const SizedBox(height: 6),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!_expanded)
+                        Text(
+                          widget.log.details!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: widget.isDark ? Colors.white54 : Colors.black45,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      else ...[
+                        const Divider(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: widget.isDark ? Colors.black26 : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: widget.isDark ? Colors.white12 : Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  widget.log.details!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontFamily: 'monospace',
+                                    color: widget.isDark ? Colors.lightBlueAccent.shade100 : Colors.blueGrey.shade800,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.copy, size: 16),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Copy Details',
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: widget.log.details!));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Details copied to clipboard!'), duration: Duration(seconds: 1)),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

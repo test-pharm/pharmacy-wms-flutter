@@ -206,6 +206,8 @@ class _UserInfoPageState extends State<UserInfoPage> {
               ),
             ),
             const SizedBox(height: 24),
+            _profileStats(isDark, roleColor),
+            const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(24),
               decoration: _cardDecoration(cardColor),
@@ -375,6 +377,56 @@ class _UserInfoPageState extends State<UserInfoPage> {
     );
   }
 
+
+  Widget _profileStats(bool isDark, Color roleColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 40),
+        const Text(
+          'Session & Account Info',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _statGridItem('Role Hierarchy', AuthService.isWarehouseManager ? 'Warehouse Manager' : 'Supervisor', Icons.security, roleColor, isDark),
+            const SizedBox(width: 14),
+            _statGridItem('Device Scope', 'Windows Desktop App', Icons.computer, Colors.teal, isDark),
+            const SizedBox(width: 14),
+            _statGridItem('Auth Source', 'Supabase Secure DB', Icons.cloud_done, Colors.purple, isDark),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _statGridItem(String title, String val, IconData icon, Color color, bool isDark) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A2F35) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 8),
+                Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(val, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
 
   BoxDecoration _cardDecoration(Color color) {
     return BoxDecoration(
