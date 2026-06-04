@@ -53,7 +53,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
   final _newSkuController = TextEditingController();
   final _newQuantityController = TextEditingController();
   final _newUnitController = TextEditingController();
-  final _newSupplierController = TextEditingController();
+  final _supplierController = TextEditingController();
   final _newCategoryController = TextEditingController();
   DateTime? _newExpiryDate;
   final _nameFocus = FocusNode();
@@ -70,6 +70,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
   bool get _hasUnsavedChanges {
     if (_sessionMaterials.isNotEmpty) return true;
     if (_invoiceController.text.trim().isNotEmpty) return true;
+    if (_supplierController.text.trim().isNotEmpty) return true;
     if (_step == 2 && _selectionMode == 0) {
       if (_existingQuantityController.text.trim().isNotEmpty) return true;
       if (_existingExpiryDate != null) return true;
@@ -91,7 +92,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     _newSkuController.dispose();
     _newQuantityController.dispose();
     _newUnitController.dispose();
-    _newSupplierController.dispose();
+    _supplierController.dispose();
     _newCategoryController.dispose();
     _nameFocus.dispose();
     _skuFocus.dispose();
@@ -170,6 +171,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     final product = widget.provider.findById(selected.id) ?? selected;
     final body = product.toApiBody();
     body['quantity'] = product.quantity + addedQty;
+    body['supplier'] = _supplierController.text.trim();
     if (_existingExpiryDate != null) {
       body['expiryDate'] = _existingExpiryDate!.toUtc().toIso8601String();
     
@@ -193,7 +195,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     if (qty <= 0 || name.isEmpty || sku.isEmpty) return false;
     if (_newExpiryDate == null) return false;
     final unit = _newUnitController.text.trim();
-    final supplier = _newSupplierController.text.trim();
+    final supplier = _supplierController.text.trim();
     final category = _newCategoryController.text.trim();
     final body = <String, dynamic>{
       'materialName': name,      'materialSKU': sku,      'quantity': qty,      'unit': unit,      'logNumber': '',      'expiryDate': _newExpiryDate!.toUtc().toIso8601String(),      'supplier': supplier,      'isAvailable': true,      'categoryId': 0,      'categoryName': category,    
@@ -234,7 +236,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
       
 }
 
-      final supplier = sessionItem.body['supplier']?.toString() ?? '';      final order = OrderModel(        productId: sessionItem.productId,        productName: sessionItem.name,        productSku: sessionItem.sku,        quantity: sessionItem.quantity,        unit: sessionItem.unit,        logNumber: sessionItem.logNumber,        categoryId: sessionItem.categoryId,        type: OrderType.add,        status: OrderStatus.completed,        supplier: supplier,        createdBy: AuthService.currentUser?.fullName ?? '',        invoiceNumber: invoiceNum.isNotEmpty ? invoiceNum : null,        expiryDate: sessionItem.expiryDate.isNotEmpty ? sessionItem.expiryDate : null,      );
+      final supplier = _supplierController.text.trim();      final order = OrderModel(        productId: sessionItem.productId,        productName: sessionItem.name,        productSku: sessionItem.sku,        quantity: sessionItem.quantity,        unit: sessionItem.unit,        logNumber: sessionItem.logNumber,        categoryId: sessionItem.categoryId,        type: OrderType.add,        status: OrderStatus.completed,        supplier: supplier,        createdBy: AuthService.currentUser?.fullName ?? '',        invoiceNumber: invoiceNum.isNotEmpty ? invoiceNum : null,        expiryDate: sessionItem.expiryDate.isNotEmpty ? sessionItem.expiryDate : null,      );
       OrderService.addOrder(order);
     
 }
@@ -285,7 +287,6 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     _newSkuController.clear();
     _newQuantityController.clear();
     _newUnitController.clear();
-    _newSupplierController.clear();
     _newCategoryController.clear();
     _newExpiryDate = null;
   }
@@ -364,7 +365,17 @@ date.year
 }  
 }
   Widget _buildInvoiceStep(AppLocalizations tr, bool isDark) {
-    return SizedBox(      width: 400,      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Text(            tr.invoiceNumber,            style: TextStyle(              fontSize: 13,              fontWeight: FontWeight.w600,              color: isDark ? Colors.white : Colors.black,            ),          ),          const SizedBox(height: 8),          TextFormField(            controller: _invoiceController,            style: TextStyle(color: isDark ? Colors.white : Colors.black87),            decoration: InputDecoration(              hintText: tr.invoiceNumber,              prefixIcon: const Icon(Icons.description_outlined),              filled: true,              fillColor: isDark ? const Color(0xFF2A3441) : Colors.grey[100],              border: OutlineInputBorder(                borderRadius: BorderRadius.circular(12),                borderSide: BorderSide.none,              ),            ),          ),        ],      ),    );
+    return SizedBox(      width: 400,      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Text(            tr.invoiceNumber,            style: TextStyle(              fontSize: 13,              fontWeight: FontWeight.w600,              color: isDark ? Colors.white : Colors.black,            ),          ),          const SizedBox(height: 8),          TextFormField(            controller: _invoiceController,            style: TextStyle(color: isDark ? Colors.white : Colors.black87),            decoration: InputDecoration(              hintText: tr.invoiceNumber,              prefixIcon: const Icon(Icons.description_outlined),              filled: true,              fillColor: isDark ? const Color(0xFF2A3441) : Colors.grey[100],              border: OutlineInputBorder(                borderRadius: BorderRadius.circular(12),                borderSide: BorderSide.none,              ),            ),          ),          const SizedBox(height: 20),          _buildFocusField(
+            controller: _supplierController,
+            focusNode: _supplierFocus,
+            label: tr.supplier,
+            hintText: tr.hintSupplierExample,
+            icon: Icons.business_outlined,
+            isDark: isDark,
+            textInputAction: TextInputAction.done,
+          ),
+        ],      ),
+    );
   
 }
   Widget _buildSelectionStep(AppLocalizations tr, bool isDark) {
@@ -440,7 +451,7 @@ p.sku
         _buildFocusField(
           controller: _newUnitController,
           focusNode: _unitFocus,
-          nextFocusNode: _newCategoryController.text.isEmpty ? _categoryFocus : _supplierFocus,
+          nextFocusNode: _newCategoryController.text.isEmpty ? _categoryFocus : _quantityFocus,
           label: tr.unit,
           hintText: tr.hintUnitExamples,
           icon: Icons.scale_outlined,
@@ -450,20 +461,10 @@ p.sku
         _buildFocusField(
           controller: _newCategoryController,
           focusNode: _categoryFocus,
-          nextFocusNode: _supplierFocus,
+          nextFocusNode: _quantityFocus,
           label: tr.category,
           hintText: tr.hintCategoryExample,
           icon: Icons.category_outlined,
-          isDark: isDark,
-          textInputAction: TextInputAction.next,
-        ),
-        _buildFocusField(
-          controller: _newSupplierController,
-          focusNode: _supplierFocus,
-          nextFocusNode: _quantityFocus,
-          label: tr.supplier,
-          hintText: tr.hintSupplierExample,
-          icon: Icons.business_outlined,
           isDark: isDark,
           textInputAction: TextInputAction.next,
         ),
