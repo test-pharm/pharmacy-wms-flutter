@@ -73,21 +73,19 @@ class _OperationsPageState extends State<OperationsPage> {
     super.initState();
     _load();
     OrderService.changes.addListener(_load);
-    NotificationService.changes.addListener(_handleNotificationChange);
+
   }
 
   @override
   void dispose() {
     OrderService.changes.removeListener(_load);
-    NotificationService.changes.removeListener(_handleNotificationChange);
+
     _searchCtrl.dispose();
     _debounce?.cancel();
     super.dispose();
   }
 
-  void _handleNotificationChange() {
-    if (mounted) setState(() {});
-  }
+
 
   Future<void> _load() async {
     if (!mounted) return;
@@ -241,9 +239,20 @@ class _OperationsPageState extends State<OperationsPage> {
 
   Future<void> _approveExpiryEdit(dynamic req) async {
     final id = req['id'] is int ? req['id'] : int.tryParse(req['id'].toString()) ?? 0;
+    final materialName = (req['productName'] ?? req['materialName'] ?? '').toString();
+    final productSku = (req['productSku'] ?? '').toString();
+    final requester = (req['requestedBy'] ?? req['createdBy'] ?? '').toString();
     try {
       await ApprovalService.approveRequest(id);
       if (!mounted) return;
+      final feedback = AppNotification(
+        title: context.tr.orderTypeEdit,
+        body: '${context.tr.approved} by ${AuthService.currentUser?.fullName ?? "Supervisor"}',
+        materialName: materialName,
+        productSku: productSku,
+        managerName: requester,
+      );
+      NotificationService.addNotification(feedback);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr.requestApproved)));
       _load();
     } catch (e) {
@@ -285,6 +294,17 @@ class _OperationsPageState extends State<OperationsPage> {
     try {
       await ApprovalService.rejectRequest(id, notes: notes.isEmpty ? null : notes);
       if (!mounted) return;
+      final materialName = (req['productName'] ?? req['materialName'] ?? '').toString();
+      final productSku = (req['productSku'] ?? '').toString();
+      final requester = (req['requestedBy'] ?? req['createdBy'] ?? '').toString();
+      final feedback = AppNotification(
+        title: context.tr.orderTypeEdit,
+        body: '${context.tr.rejected} by ${AuthService.currentUser?.fullName ?? "Supervisor"}. ${notes.isNotEmpty ? context.tr.reason + ": $notes" : ""}',
+        materialName: materialName,
+        productSku: productSku,
+        managerName: requester,
+      );
+      NotificationService.addNotification(feedback);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr.requestRejected)));
       _load();
     } catch (e) {
@@ -409,102 +429,6 @@ class _OperationsPageState extends State<OperationsPage> {
     );
   }
 
-  Widget _notificationBell() {
-    final unreadCount = NotificationService.getUnread().length;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          tooltip: context.tr.editRequests,
-          onPressed: _showOrderNotifications,
-          icon: const Icon(Icons.notifications_none),
-        ),
-        if (unreadCount > 0)
-          PositionedDirectional(
-            end: 4,
-            top: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                unreadCount.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  void _showOrderNotifications() {
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final notifications = NotificationService.getAll();
-          return AlertDialog(
-            title: Text('${context.tr.editRequests} (${NotificationService.getUnread().length})'),
-            content: SizedBox(
-              width: 520,
-              child: notifications.isEmpty
-                  ? Text(context.tr.noEditRequests)
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: notifications.length,
-                      separatorBuilder: (context, index) => const Divider(),
-                      itemBuilder: (context, index) {
-                        final item = notifications[index];
-                        return ListTile(
-                          leading: Icon(
-                            item.isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined,
-                            color: item.isRead ? Colors.grey : Colors.green,
-                          ),
-                          title: Text(item.materialName ?? item.title),
-                          subtitle: Text(
-                            '${context.tr.sku}: ${item.productSku ?? '-'}\n'
-                            'Proposed expiry: ${_formatRawDate(item.proposedExpiry ?? '')}\n'
-                            'Manager: ${item.managerName ?? '-'}',
-                          ),
-                          isThreeLine: true,
-                          trailing: TextButton(
-                            onPressed: () {
-                              NotificationService.markRead(item.id);
-                              setState(() {});
-                              setDialogState(() {});
-                              Navigator.pop(ctx);
-                              widget.onGoToOrders?.call();
-                            },
-                            child: Text(context.tr.goToOrders),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  for (final n in NotificationService.getUnread()) {
-                    NotificationService.markRead(n.id);
-                  }
-                  setState(() {});
-                  setDialogState(() {});
-                },
-                child: Text(context.tr.markAllRead),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(context.tr.close),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -544,10 +468,6 @@ class _OperationsPageState extends State<OperationsPage> {
                         ),
                       ),
                 const Spacer(),
-                if (AuthService.isSupervisor) ...[
-                  _notificationBell(),
-                  const SizedBox(width: 10),
-                ],
               ],
             ),
             const SizedBox(height: 20),
