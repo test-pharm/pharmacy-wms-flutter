@@ -4,11 +4,8 @@ import 'package:pharmacy_wms/Models/UserRoleModel.dart';
 import 'package:pharmacy_wms/Models/app_localizations.dart';
 import 'package:pharmacy_wms/views/DashboardView.dart';
 import 'package:pharmacy_wms/views/InventoryView.dart';
-import 'package:pharmacy_wms/views/OrdersView.dart';
-import 'package:pharmacy_wms/views/InvoicesView.dart';
+import 'package:pharmacy_wms/views/OperationsView.dart';
 import 'package:pharmacy_wms/views/AuditLogView.dart';
-import 'package:pharmacy_wms/views/ApprovalsView.dart';
-import 'package:pharmacy_wms/views/EditRequestsView.dart';
 import 'package:pharmacy_wms/views/ReportsPage.dart';
 import 'package:pharmacy_wms/views/ThresholdSettingsPage.dart';
 import 'package:pharmacy_wms/main.dart';
@@ -23,19 +20,13 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {  
 
   void _onSelect(int index) {    if (_selectedIndex == index) return;    setState(() => _selectedIndex = index);    final w = MediaQuery.of(context).size.width;    if (w < 900 && !_sidebarCollapsed) {      setState(() => _sidebarCollapsed = true);    }  }
 
-  List<Widget> _getPages() {    if (AuthService.isSupervisor) {      return [        OrdersPage(onGoToOrders: () => _onSelect(0)),        InvoicesPage(),        ReportsPage(onGoToOrders: () => _onSelect(0)),                const AuditLogPage(),
-        const ApprovalsPage(),
-        const EditRequestsPage(),
-      ];
-    }    return const [      DashboardPage(),      InventoryPage(),      StocktakePage(),      ReportsPage(),      OrdersPage(),      InvoicesPage(),            AuditLogPage(),
+  List<Widget> _getPages() {    if (AuthService.isSupervisor) {      return [        OperationsPage(onGoToOrders: () => _onSelect(0)),        ReportsPage(onGoToOrders: () => _onSelect(0)),        const AuditLogPage(),      ];
+    }    return const [      DashboardPage(),      InventoryPage(),      StocktakePage(),      ReportsPage(),      OperationsPage(),      AuditLogPage(),
       ThresholdSettingsPage(),
-      EditRequestsPage(),
     ];  }
 
-  List<_MenuItem> _getMenuItems(AppLocalizations tr) {    if (AuthService.isSupervisor) {      return [        _MenuItem(Icons.list_alt, tr.orders, 0),        _MenuItem(Icons.receipt_long, tr.invoicesTitle, 1),        _MenuItem(Icons.bar_chart, tr.reports, 2),        _MenuItem(Icons.history, tr.auditLog, 3),                _MenuItem(Icons.approval, tr.pendingApprovals, 4),
-        _MenuItem(Icons.edit_note, tr.editRequests, 5),
-      ];    }    return [      _MenuItem(Icons.dashboard, tr.dashboard, 0),      _MenuItem(Icons.inventory_2, tr.inventory, 1),      _MenuItem(Icons.assignment, tr.stocktake, 2),      _MenuItem(Icons.bar_chart, tr.reports, 3),      _MenuItem(Icons.list_alt, tr.orders, 4),      _MenuItem(Icons.receipt_long, tr.invoicesTitle, 5),      _MenuItem(Icons.history, tr.auditLog, 6),            _MenuItem(Icons.settings, tr.settings, 7),
-      _MenuItem(Icons.edit_note, tr.editRequests, 8),
+  List<_MenuItem> _getMenuItems(AppLocalizations tr) {    if (AuthService.isSupervisor) {      return [        _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 0),        _MenuItem(Icons.bar_chart, tr.reports, 1),        _MenuItem(Icons.history, tr.auditLog, 2),      ];
+    }    return [      _MenuItem(Icons.dashboard, tr.dashboard, 0),      _MenuItem(Icons.inventory_2, tr.inventory, 1),      _MenuItem(Icons.assignment, tr.stocktake, 2),      _MenuItem(Icons.bar_chart, tr.reports, 3),      _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 4),      _MenuItem(Icons.history, tr.auditLog, 5),      _MenuItem(Icons.settings, tr.settings, 6),
     ];  }
 
 
