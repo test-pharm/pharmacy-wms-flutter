@@ -14,6 +14,8 @@ import 'package:pharmacy_wms/views/StocktakePage.dart';
 import 'package:pharmacy_wms/widgets/toast.dart';
 import 'package:pharmacy_wms/widgets/UpdateDialog.dart';
 import 'package:pharmacy_wms/Services/notificationService.dart';
+import 'package:pharmacy_wms/views/UserManagementPage.dart';
+import 'package:pharmacy_wms/views/CategoriesPage.dart';
 class MainLayout extends StatefulWidget {  final int initialIndex;  const MainLayout({super.key, this.initialIndex = 0});  @override  State<MainLayout> createState() => _MainLayoutState();}
 class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {  late int _selectedIndex;  bool _sidebarCollapsed = false;  @override  void initState() {    super.initState();    WidgetsBinding.instance.addObserver(this);    _selectedIndex = AuthService.isSupervisor ? 0 : widget.initialIndex;    NotificationService.init();    NotificationService.changes.addListener(_onNotificationsChanged);  }
   @override  void dispose() {    WidgetsBinding.instance.removeObserver(this);    NotificationService.changes.removeListener(_onNotificationsChanged);    super.dispose();  }
@@ -22,14 +24,47 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {  
 
   void _onSelect(int index) {    if (_selectedIndex == index) return;    setState(() => _selectedIndex = index);    final w = MediaQuery.of(context).size.width;    if (w < 900 && !_sidebarCollapsed) {      setState(() => _sidebarCollapsed = true);    }  }
 
-  List<Widget> _getPages() {    if (AuthService.isSupervisor) {      return [        OperationsPage(onGoToOrders: () => _onSelect(0)),        ReportsPage(onGoToOrders: () => _onSelect(0)),        const AuditLogPage(),      ];
-    }    return const [      DashboardPage(),      InventoryPage(),      StocktakePage(),      ReportsPage(),      OperationsPage(),      AuditLogPage(),
+  List<Widget> _getPages() {
+    if (AuthService.isSupervisor) {
+      return [
+        OperationsPage(onGoToOrders: () => _onSelect(0)),
+        ReportsPage(onGoToOrders: () => _onSelect(0)),
+        const AuditLogPage(),
+      ];
+    }
+    return const [
+      DashboardPage(),
+      InventoryPage(),
+      StocktakePage(),
+      ReportsPage(),
+      OperationsPage(),
+      AuditLogPage(),
       ThresholdSettingsPage(),
-    ];  }
+      UserManagementPage(),
+      CategoriesPage(),
+    ];
+  }
 
-  List<_MenuItem> _getMenuItems(AppLocalizations tr) {    if (AuthService.isSupervisor) {      return [        _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 0),        _MenuItem(Icons.bar_chart, tr.reports, 1),        _MenuItem(Icons.history, tr.auditLog, 2),      ];
-    }    return [      _MenuItem(Icons.dashboard, tr.dashboard, 0),      _MenuItem(Icons.inventory_2, tr.inventory, 1),      _MenuItem(Icons.assignment, tr.stocktake, 2),      _MenuItem(Icons.bar_chart, tr.reports, 3),      _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 4),      _MenuItem(Icons.history, tr.auditLog, 5),      _MenuItem(Icons.settings, tr.settings, 6),
-    ];  }
+  List<_MenuItem> _getMenuItems(AppLocalizations tr) {
+    if (AuthService.isSupervisor) {
+      return [
+        _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 0),
+        _MenuItem(Icons.bar_chart, tr.reports, 1),
+        _MenuItem(Icons.history, tr.auditLog, 2),
+      ];
+    }
+    return [
+      _MenuItem(Icons.dashboard, tr.dashboard, 0),
+      _MenuItem(Icons.inventory_2, tr.inventory, 1),
+      _MenuItem(Icons.assignment, tr.stocktake, 2),
+      _MenuItem(Icons.bar_chart, tr.reports, 3),
+      _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 4),
+      _MenuItem(Icons.history, tr.auditLog, 5),
+      _MenuItem(Icons.settings, tr.settings, 6),
+      _MenuItem(Icons.people, tr.userManagement, 7),
+      _MenuItem(Icons.category, tr.categoriesManagement, 8),
+    ];
+  }
 
 
   void _showGlobalNotifications() {    showDialog(      context: context,      builder: (ctx) => StatefulBuilder(        builder: (context, setDialogState) {          final notifications = NotificationService.getAll();          final tr = context.tr;          return AlertDialog(            title: Text('${tr.notifications} (${NotificationService.getUnread().length})'),            content: SizedBox(              width: 520,              child: notifications.isEmpty                  ? Center(child: Text(tr.noNotifications))                  : ListView.separated(                      shrinkWrap: true,                      itemCount: notifications.length,                      separatorBuilder: (_, __) => const Divider(),                      itemBuilder: (context, index) {                        final item = notifications[index];                        return ListTile(                          leading: Icon(                            item.isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined,                            color: item.isRead ? Colors.grey : Colors.green,                          ),                          title: Text(item.title),                          subtitle: Text(                            '${item.body}\n'                            '${tr.materials}: ${item.materialName ?? "-"}\n'                            '${tr.sku}: ${item.productSku ?? "-"}',                          ),                          isThreeLine: true,                          trailing: TextButton(                            onPressed: () {                              NotificationService.markRead(item.id);                              setState(() {});                              setDialogState(() {});                              Navigator.pop(ctx);                              final targetIndex = AuthService.isSupervisor ? 0 : 4;                              _onSelect(targetIndex);                            },                            child: Text(tr.goToOrders),                          ),                        );                      },                    ),          ),            actions: [              TextButton(                onPressed: () {                  NotificationService.markAllRead();                  setState(() {});                  Navigator.pop(ctx);                },                child: Text(tr.markAllRead),              ),              TextButton(                onPressed: () => Navigator.pop(ctx),                child: Text(tr.close),              ),            ],          );        },      ),    );  }

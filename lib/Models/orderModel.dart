@@ -1,4 +1,4 @@
-enum OrderType { add, export, edit }
+enum OrderType { add, export, edit, disposal }
 
 enum OrderStatus { completed, pending, canceled }
 

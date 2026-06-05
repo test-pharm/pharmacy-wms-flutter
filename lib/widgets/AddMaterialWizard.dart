@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:pharmacy_wms/Models/ProductProvider.dart';
 
@@ -11,6 +11,10 @@ import 'package:pharmacy_wms/Models/app_localizations.dart';
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
 
 import 'package:pharmacy_wms/Services/orderService.dart';
+
+import 'package:pharmacy_wms/Services/CategoryService.dart';
+
+import 'package:pharmacy_wms/Services/ContactService.dart';
 
 import 'package:pharmacy_wms/widgets/toast.dart';
 
@@ -55,6 +59,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
   final _newUnitController = TextEditingController();
   final _supplierController = TextEditingController();
   final _newCategoryController = TextEditingController();
+  final _minStockController = TextEditingController();
   DateTime? _newExpiryDate;
   final _nameFocus = FocusNode();
   final _skuFocus = FocusNode();
@@ -66,6 +71,11 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
   bool _submitted = false;
   bool _saving = false;
   bool _popIntercepted = false;
+
+  List<Map<String, dynamic>> _categories = [];
+  List<Contact> _suppliers = [];
+  int? _selectedCategoryId;
+
   bool get _hasSessionItems => _sessionMaterials.isNotEmpty;
   bool get _hasUnsavedChanges {
     if (_sessionMaterials.isNotEmpty) return true;
@@ -74,17 +84,168 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     if (_step == 2 && _selectionMode == 0) {
       if (_existingQuantityController.text.trim().isNotEmpty) return true;
       if (_existingExpiryDate != null) return true;
-    
-}    if (_step == 2 && _selectionMode == 1) {
+    }
+    if (_step == 2 && _selectionMode == 1) {
       if (_newNameController.text.trim().isNotEmpty) return true;
       if (_newSkuController.text.trim().isNotEmpty) return true;
       if (_newQuantityController.text.trim().isNotEmpty) return true;
       if (_newExpiryDate != null) return true;
-    
-}    return false;
-  
-}
-  @override  void dispose() {
+    }
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
+      final cats = await CategoryService.getCategories();
+      final sups = await ContactService.getContacts(type: 'Supplier');
+      setState(() {
+        _categories = cats;
+        _suppliers = sups;
+      });
+    } catch (e) {
+      // Silently ignore or log
+    }
+  }
+
+  Future<void> _createNewCategoryInline() async {
+    final tr = context.tr;
+    final ctrl = TextEditingController();
+    bool saving = false;
+    final newCat = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(tr.createCategory),
+          content: TextField(
+            controller: ctrl,
+            decoration: InputDecoration(
+              labelText: tr.categoryName,
+              hintText: tr.categoryName,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(ctx),
+              child: Text(tr.cancel),
+            ),
+            ElevatedButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final name = ctrl.text.trim();
+                      if (name.isEmpty) return;
+                      setDialogState(() => saving = true);
+                      try {
+                        final result = await CategoryService.createCategory(name);
+                        if (context.mounted) Navigator.pop(ctx, result);
+                      } catch (e) {
+                        showToast(context, e.toString().replaceFirst('Exception: ', ''), type: ToastType.error);
+                      } finally {
+                        setDialogState(() => saving = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1CA0A5)),
+              child: saving
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(tr.save, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (newCat != null) {
+      await _loadInitialData();
+      setState(() {
+        _selectedCategoryId = newCat['id'] as int;
+      });
+    }
+  }
+
+  Future<void> _createNewSupplierInline(String prefilledName, Function(Contact) onCreated) async {
+    final tr = context.tr;
+    final nameCtrl = TextEditingController(text: prefilledName);
+    final phoneCtrl = TextEditingController();
+    final notesCtrl = TextEditingController();
+    bool saving = false;
+    final newContact = await showDialog<Contact>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(tr.createContact),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: tr.contactName,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneCtrl,
+                decoration: InputDecoration(
+                  labelText: tr.phoneNumber,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notesCtrl,
+                decoration: InputDecoration(
+                  labelText: tr.notes,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(ctx),
+              child: Text(tr.cancel),
+            ),
+            ElevatedButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final name = nameCtrl.text.trim();
+                      if (name.isEmpty) return;
+                      setDialogState(() => saving = true);
+                      try {
+                        final result = await ContactService.createContact(
+                          name: name,
+                          type: 'Supplier',
+                          phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+                          notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                        );
+                        if (context.mounted) Navigator.pop(ctx, result);
+                      } catch (e) {
+                        showToast(context, e.toString().replaceFirst('Exception: ', ''), type: ToastType.error);
+                      } finally {
+                        setDialogState(() => saving = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1CA0A5)),
+              child: saving
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(tr.save, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (newContact != null) {
+      await _loadInitialData();
+      onCreated(newContact);
+    }
+  }
+
+  @override
+  void dispose() {
     _invoiceController.dispose();
     _existingSearchController.dispose();
     _existingQuantityController.dispose();
@@ -94,6 +255,7 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     _newUnitController.dispose();
     _supplierController.dispose();
     _newCategoryController.dispose();
+    _minStockController.dispose();
     _nameFocus.dispose();
     _skuFocus.dispose();
     _unitFocus.dispose();
@@ -187,7 +349,6 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
 }
 
   bool _addNewToSession() {
-    final tr = context.tr;
     if (!_formKey.currentState!.validate()) return false;
     final name = _newNameController.text.trim();
     final sku = _newSkuController.text.trim();
@@ -196,19 +357,40 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     if (_newExpiryDate == null) return false;
     final unit = _newUnitController.text.trim();
     final supplier = _supplierController.text.trim();
-    final category = _newCategoryController.text.trim();
+    final categoryId = _selectedCategoryId ?? 0;
+    final categoryName = _categories.firstWhere((c) => c['id'] == categoryId, orElse: () => {'name': ''})['name'] as String;
+    final minStockLevel = int.tryParse(_minStockController.text.trim()) ?? 0;
     final body = <String, dynamic>{
-      'materialName': name,      'materialSKU': sku,      'quantity': qty,      'unit': unit,      'logNumber': '',      'expiryDate': _newExpiryDate!.toUtc().toIso8601String(),      'supplier': supplier,      'isAvailable': true,      'categoryId': 0,      'categoryName': category,    
-};
+      'materialName': name,
+      'materialSKU': sku,
+      'quantity': qty,
+      'unit': unit,
+      'logNumber': '',
+      'expiryDate': _newExpiryDate!.toUtc().toIso8601String(),
+      'supplier': supplier,
+      'isAvailable': true,
+      'categoryId': categoryId,
+      'categoryName': categoryName,
+      'minStockLevel': minStockLevel,
+    };
     setState(() {
-      _sessionMaterials.add(_SessionMaterial(        mode: 'new',        productId: null,        name: name,        sku: sku,        quantity: qty,        unit: unit,        logNumber: '',        categoryId: 0,        expiryDate: _newExpiryDate!.toUtc().toIso8601String(),        body: body,      ));
+      _sessionMaterials.add(_SessionMaterial(
+        mode: 'new',
+        productId: null,
+        name: name,
+        sku: sku,
+        quantity: qty,
+        unit: unit,
+        logNumber: '',
+        categoryId: categoryId,
+        expiryDate: _newExpiryDate!.toUtc().toIso8601String(),
+        body: body,
+      ));
       _clearNewForm();
       _goToStep(1);
-    
-});
+    });
     return true;
-  
-}
+  }
 
   void _removeSessionMaterial(int index) {
     setState(() {
@@ -288,6 +470,8 @@ class _AddMaterialWizardState extends State<AddMaterialWizard> {
     _newQuantityController.clear();
     _newUnitController.clear();
     _newCategoryController.clear();
+    _minStockController.clear();
+    _selectedCategoryId = null;
     _newExpiryDate = null;
   }
 
@@ -365,19 +549,40 @@ date.year
 }  
 }
   Widget _buildInvoiceStep(AppLocalizations tr, bool isDark) {
-    return SizedBox(      width: 400,      child: Column(        crossAxisAlignment: CrossAxisAlignment.start,        children: [          Text(            tr.invoiceNumber,            style: TextStyle(              fontSize: 13,              fontWeight: FontWeight.w600,              color: isDark ? Colors.white : Colors.black,            ),          ),          const SizedBox(height: 8),          TextFormField(            controller: _invoiceController,            style: TextStyle(color: isDark ? Colors.white : Colors.black87),            decoration: InputDecoration(              hintText: tr.invoiceNumber,              prefixIcon: const Icon(Icons.description_outlined),              filled: true,              fillColor: isDark ? const Color(0xFF2A3441) : Colors.grey[100],              border: OutlineInputBorder(                borderRadius: BorderRadius.circular(12),                borderSide: BorderSide.none,              ),            ),          ),          const SizedBox(height: 20),          _buildFocusField(
-            controller: _supplierController,
-            focusNode: _supplierFocus,
-            label: tr.supplier,
-            hintText: tr.hintSupplierExample,
-            icon: Icons.business_outlined,
-            isDark: isDark,
-            textInputAction: TextInputAction.done,
+    return SizedBox(
+      width: 400,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr.invoiceNumber,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
-        ],      ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _invoiceController,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+            decoration: InputDecoration(
+              hintText: tr.invoiceNumber,
+              prefixIcon: const Icon(Icons.description_outlined),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF2A3441) : Colors.grey[100],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildSupplierAutocomplete(tr, isDark),
+        ],
+      ),
     );
-  
-}
+  }
   Widget _buildSelectionStep(AppLocalizations tr, bool isDark) {
     return Column(      crossAxisAlignment: CrossAxisAlignment.start,      children: [        Row(          children: [            Expanded(              child: _buildSelectionCard(                icon: Icons.checklist,                label: tr.existingStock,                description: tr.addToExistingDesc,                color: const Color(0xFF3B82F6),                isDark: isDark,                selected: _selectionMode == 0,                onTap: () => _selectMode(0),              ),            ),            const SizedBox(width: 16),            Expanded(              child: _buildSelectionCard(                icon: Icons.add_box_outlined,                label: tr.newMaterial,                description: tr.addNewDesc,                color: const Color(0xFF22C55E),                isDark: isDark,                selected: _selectionMode == 1,                onTap: () => _selectMode(1),              ),            ),          ],        ),      ],    );
   
@@ -427,7 +632,10 @@ p.sku
   
 }
   Widget _buildNewFormStep(AppLocalizations tr, bool isDark) {
-    return Wrap(      spacing: 16,      runSpacing: 16,      children: [
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [
         _buildFocusField(
           controller: _newNameController,
           focusNode: _nameFocus,
@@ -451,23 +659,14 @@ p.sku
         _buildFocusField(
           controller: _newUnitController,
           focusNode: _unitFocus,
-          nextFocusNode: _newCategoryController.text.isEmpty ? _categoryFocus : _quantityFocus,
+          nextFocusNode: _quantityFocus,
           label: tr.unit,
           hintText: tr.hintUnitExamples,
           icon: Icons.scale_outlined,
           isDark: isDark,
           textInputAction: TextInputAction.next,
         ),
-        _buildFocusField(
-          controller: _newCategoryController,
-          focusNode: _categoryFocus,
-          nextFocusNode: _quantityFocus,
-          label: tr.category,
-          hintText: tr.hintCategoryExample,
-          icon: Icons.category_outlined,
-          isDark: isDark,
-          textInputAction: TextInputAction.next,
-        ),
+        _buildCategoryDropdown(tr, isDark),
         _buildFocusField(
           controller: _newQuantityController,
           focusNode: _quantityFocus,
@@ -476,8 +675,22 @@ p.sku
           icon: Icons.inventory_2_outlined,
           isDark: isDark,
           keyboardType: TextInputType.number,
-          textInputAction: TextInputAction.done,
-          onFieldSubmitted: (_) => _onAddToSession(),
+          textInputAction: TextInputAction.next,
+        ),
+        _buildField(
+          controller: _minStockController,
+          label: tr.minStockLevelLabel,
+          hintText: tr.enterMinStockLevel,
+          icon: Icons.warning_amber_outlined,
+          isDark: isDark,
+          keyboardType: TextInputType.number,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return null;
+            final parsed = int.tryParse(v.trim());
+            if (parsed == null || parsed < 0) return tr.positiveNumber;
+            return null;
+          },
+          width: 280,
         ),
         _buildExpiryPicker(
           label: tr.expiryDate,
@@ -487,6 +700,190 @@ p.sku
           width: 280,
         ),
       ],
+    );
+  }
+
+  Widget _buildCategoryDropdown(AppLocalizations tr, bool isDark) {
+    return SizedBox(
+      width: 280,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr.category,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _selectedCategoryId,
+            dropdownColor: isDark ? const Color(0xFF2A3441) : Colors.white,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.category_outlined),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF2A3441) : Colors.grey[100],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            items: [
+              ..._categories.map((c) => DropdownMenuItem<int>(
+                    value: c['id'] as int,
+                    child: Text(c['name'] as String),
+                  )),
+              DropdownMenuItem<int>(
+                value: -1,
+                child: Text(
+                  tr.createNewCategory,
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == -1) {
+                _createNewCategoryInline();
+              } else {
+                setState(() {
+                  _selectedCategoryId = value;
+                });
+              }
+            },
+            validator: (value) {
+              if (value == null || value == -1) {
+                return tr.required;
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupplierAutocomplete(AppLocalizations tr, bool isDark) {
+    return SizedBox(
+      width: 280,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr.supplier,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Autocomplete<Contact>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  final query = textEditingValue.text.toLowerCase();
+                  if (query.isEmpty) {
+                    return _suppliers;
+                  }
+                  return _suppliers.where((c) => c.name.toLowerCase().contains(query));
+                },
+                displayStringForOption: (Contact option) => option.name,
+                fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+                  if (_supplierController.text != textController.text && _supplierController.text.isNotEmpty && textController.text.isEmpty) {
+                    textController.text = _supplierController.text;
+                  }
+                  textController.addListener(() {
+                    _supplierController.text = textController.text;
+                  });
+                  return TextFormField(
+                    controller: textController,
+                    focusNode: focusNode,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                    decoration: InputDecoration(
+                      hintText: tr.hintSupplierExample,
+                      prefixIcon: const Icon(Icons.business_outlined),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF2A3441) : Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    validator: _required,
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(12),
+                      color: isDark ? const Color(0xFF2A3441) : Colors.white,
+                      child: Container(
+                        width: constraints.maxWidth,
+                        constraints: const BoxConstraints(maxHeight: 250),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  final Contact option = options.elementAt(index);
+                                  return InkWell(
+                                    onTap: () => onSelected(option),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      child: Text(
+                                        option.name,
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            InkWell(
+                              onTap: () {
+                                _createNewSupplierInline(_supplierController.text, (newContact) {
+                                  onSelected(newContact);
+                                });
+                              },
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                child: Text(
+                                  tr.createNewContact,
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
   Widget _buildField({

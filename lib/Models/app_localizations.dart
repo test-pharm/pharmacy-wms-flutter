@@ -440,4 +440,29 @@ count == 1 ? '' : 's'
   String get uncategorizedLabel => isArabic ? 'غير مصنف' : 'Uncategorized';
   String get name => isArabic ? 'الاسم' : 'Name';
   String get total => isArabic ? 'الإجمالي' : 'TOTAL';
+
+  // === Phase 2 additions ===
+  String get userManagement => isArabic ? 'إدارة المستخدمين' : 'User Management';
+  String get categoriesManagement => isArabic ? 'إدارة الفئات' : 'Categories Management';
+  String get contactsDirectory => isArabic ? 'دليل جهات الاتصال' : 'Contacts Directory';
+  String get minStockLevelLabel => isArabic ? 'الحد الأدنى للمخزون' : 'Min Stock Level';
+  String get disposal => isArabic ? 'إتلاف' : 'Disposal';
+  String get recordDisposal => isArabic ? 'تسجيل إتلاف' : 'Record Disposal';
+  String get disposalMethod => isArabic ? 'طريقة الإتلاف' : 'Disposal Method';
+  String get recordDisposalTitle => isArabic ? 'إتلاف مواد منتهية الصلاحية' : 'Dispose Expired Materials';
+  String get toggleStatus => isArabic ? 'تغيير الحالة' : 'Toggle Status';
+  String get changeRole => isArabic ? 'تغيير الدور' : 'Change Role';
+  String get resetPassword => isArabic ? 'إعادة تعيين كلمة المرور' : 'Reset Password';
+  String get userStatusActive => isArabic ? 'نشط' : 'Active';
+  String get userStatusInactive => isArabic ? 'غير نشط' : 'Inactive';
+  String get enterMinStockLevel => isArabic ? 'أدخل الحد الأدنى للمخزون' : 'Enter Minimum Stock Level';
+  String get createNewCategory => isArabic ? '+ إنشاء فئة جديدة' : '+ Create New Category';
+  String get createCategory => isArabic ? 'إنشاء فئة' : 'Create Category';
+  String get categoryName => isArabic ? 'اسم الفئة' : 'Category Name';
+  String get createNewContact => isArabic ? '+ إضافة جهة اتصال' : '+ Add Contact';
+  String get createContact => isArabic ? 'إضافة جهة اتصال' : 'Create Contact';
+  String get contactName => isArabic ? 'الاسم' : 'Contact Name';
+  String get contactType => isArabic ? 'النوع' : 'Contact Type';
+  String get supplierLabel => isArabic ? 'مورد' : 'Supplier';
+  String get recipientLabel => isArabic ? 'مستلم' : 'Recipient';
 }

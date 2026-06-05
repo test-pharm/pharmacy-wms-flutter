@@ -592,7 +592,7 @@ DateTime.now().toString().substring(0, 16)
                 final rawStatus = MaterialService.getMaterialStatus(m);
                 return [m.name, m.category, m.quantity.toString(),                    m.expiryDate, statusMap[rawStatus] ?? rawStatus];
               
-}).toList(),              headerStyle: const pw.TextStyle(                  fontWeight: pw.FontWeight.bold, fontSize: 10),              cellStyle: const pw.TextStyle(fontSize: 9),              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),            ),          ]);
+}).toList(),              headerStyle: pw.TextStyle(                  fontWeight: pw.FontWeight.bold, fontSize: 10),              cellStyle: const pw.TextStyle(fontSize: 9),              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),            ),          ]);
         
 },      ));
       if (mounted) _showPrintOptionsDialog(pdf);

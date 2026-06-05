@@ -46,7 +46,8 @@ class AlertService {
       ));
     }
 
-    if (material.quantity < _lowStockThreshold) {
+    final threshold = material.minStockLevel > 0 ? material.minStockLevel : _lowStockThreshold;
+    if (material.quantity < threshold) {
       _alerts.add(AlertModel(
         id: 'alert_lowstock_${material.id}',
         alertType: 'low_stock',
