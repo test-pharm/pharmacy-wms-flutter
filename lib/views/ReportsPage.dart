@@ -25,9 +25,12 @@ const _pieColors = [  Colors.blue, Colors.teal, Colors.orange, Colors.purple,  C
 
 class ReportsPage extends StatefulWidget {
   final VoidCallback? onGoToOrders;
+  final int initialTabIndex;
   const ReportsPage({
-super.key, this.onGoToOrders
-});
+    super.key,
+    this.onGoToOrders,
+    this.initialTabIndex = 0,
+  });
   @override  State<ReportsPage> createState() => _ReportsPageState();
 
 }
@@ -47,7 +50,7 @@ class _ReportsPageState extends State<ReportsPage>    with SingleTickerProviderS
   bool get isSupervisor => AuthService.isSupervisor;
   @override  void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
+    _tabCtrl = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
     _tabCtrl.addListener(() {
  if (mounted) setState(() {
 

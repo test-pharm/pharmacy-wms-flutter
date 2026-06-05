@@ -16,41 +16,117 @@ import 'package:pharmacy_wms/widgets/UpdateDialog.dart';
 import 'package:pharmacy_wms/Services/notificationService.dart';
 import 'package:pharmacy_wms/views/UserManagementPage.dart';
 import 'package:pharmacy_wms/views/CategoriesPage.dart';
-class MainLayout extends StatefulWidget {  final int initialIndex;  const MainLayout({super.key, this.initialIndex = 0});  @override  State<MainLayout> createState() => _MainLayoutState();}
-class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {  late int _selectedIndex;  bool _sidebarCollapsed = false;  @override  void initState() {    super.initState();    WidgetsBinding.instance.addObserver(this);    _selectedIndex = AuthService.isSupervisor ? 0 : widget.initialIndex;    NotificationService.init();    NotificationService.changes.addListener(_onNotificationsChanged);  }
-  @override  void dispose() {    WidgetsBinding.instance.removeObserver(this);    NotificationService.changes.removeListener(_onNotificationsChanged);    super.dispose();  }
-  void _onNotificationsChanged() {    if (mounted) setState(() {});  }
-  @override  void didChangeMetrics() {    final w = WidgetsBinding.instance.window.physicalSize.shortestSide /        WidgetsBinding.instance.window.devicePixelRatio;    final shouldCollapse = w < 900;    if (shouldCollapse != _sidebarCollapsed && mounted) {      setState(() => _sidebarCollapsed = shouldCollapse);    }  }
+class MainLayout extends StatefulWidget {
+  final int initialIndex;
+  const MainLayout({super.key, this.initialIndex = 0});
+  @override
+  State<MainLayout> createState() => _MainLayoutState();
+}
 
-  void _onSelect(int index) {    if (_selectedIndex == index) return;    setState(() => _selectedIndex = index);    final w = MediaQuery.of(context).size.width;    if (w < 900 && !_sidebarCollapsed) {      setState(() => _sidebarCollapsed = true);    }  }
+class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
+  late int _selectedIndex;
+  bool _sidebarCollapsed = false;
+  int _reportsInitialTabIndex = 0;
+  String? _inventoryInitialAvailabilityFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _selectedIndex = AuthService.isSupervisor ? 0 : widget.initialIndex;
+    NotificationService.init();
+    NotificationService.changes.addListener(_onNotificationsChanged);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    NotificationService.changes.removeListener(_onNotificationsChanged);
+    super.dispose();
+  }
+
+  void _onNotificationsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didChangeMetrics() {
+    final w = WidgetsBinding.instance.window.physicalSize.shortestSide /
+        WidgetsBinding.instance.window.devicePixelRatio;
+    final shouldCollapse = w < 900;
+    if (shouldCollapse != _sidebarCollapsed && mounted) {
+      setState(() => _sidebarCollapsed = shouldCollapse);
+    }
+  }
+
+  void _onSelect(int index) {
+    if (_selectedIndex == index) return;
+    setState(() {
+      _selectedIndex = index;
+      _reportsInitialTabIndex = 0;
+      _inventoryInitialAvailabilityFilter = null;
+    });
+    final w = MediaQuery.of(context).size.width;
+    if (w < 900 && !_sidebarCollapsed) {
+      setState(() => _sidebarCollapsed = true);
+    }
+  }
 
   List<Widget> _getPages() {
     if (AuthService.isSupervisor) {
       return [
-        OperationsPage(onGoToOrders: () => _onSelect(0)),
-        ReportsPage(onGoToOrders: () => _onSelect(0)),
+        DashboardPage(
+          onNavigate: (index, {String? availabilityFilter, int? reportsTab}) {
+            setState(() {
+              _selectedIndex = index;
+              _reportsInitialTabIndex = reportsTab ?? 0;
+              _inventoryInitialAvailabilityFilter = availabilityFilter;
+            });
+          },
+        ),
+        OperationsPage(onGoToOrders: () => _onSelect(1)),
+        ReportsPage(
+          onGoToOrders: () => _onSelect(1),
+          initialTabIndex: _reportsInitialTabIndex,
+        ),
         const AuditLogPage(),
+        InventoryPage(
+          initialAvailabilityFilter: _inventoryInitialAvailabilityFilter,
+        ),
       ];
     }
-    return const [
-      DashboardPage(),
-      InventoryPage(),
-      StocktakePage(),
-      ReportsPage(),
-      OperationsPage(),
-      AuditLogPage(),
-      ThresholdSettingsPage(),
-      UserManagementPage(),
-      CategoriesPage(),
+    return [
+      DashboardPage(
+        onNavigate: (index, {String? availabilityFilter, int? reportsTab}) {
+          setState(() {
+            _selectedIndex = index;
+            _reportsInitialTabIndex = reportsTab ?? 0;
+            _inventoryInitialAvailabilityFilter = availabilityFilter;
+          });
+        },
+      ),
+      InventoryPage(
+        initialAvailabilityFilter: _inventoryInitialAvailabilityFilter,
+      ),
+      const StocktakePage(),
+      ReportsPage(
+        initialTabIndex: _reportsInitialTabIndex,
+      ),
+      const OperationsPage(),
+      const AuditLogPage(),
+      const ThresholdSettingsPage(),
+      const UserManagementPage(),
+      const CategoriesPage(),
     ];
   }
 
   List<_MenuItem> _getMenuItems(AppLocalizations tr) {
     if (AuthService.isSupervisor) {
       return [
-        _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 0),
-        _MenuItem(Icons.bar_chart, tr.reports, 1),
-        _MenuItem(Icons.history, tr.auditLog, 2),
+        _MenuItem(Icons.dashboard, tr.dashboard, 0),
+        _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 1),
+        _MenuItem(Icons.bar_chart, tr.reports, 2),
+        _MenuItem(Icons.history, tr.auditLog, 3),
       ];
     }
     return [
@@ -67,7 +143,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {  
   }
 
 
-  void _showGlobalNotifications() {    showDialog(      context: context,      builder: (ctx) => StatefulBuilder(        builder: (context, setDialogState) {          final notifications = NotificationService.getAll();          final tr = context.tr;          return AlertDialog(            title: Text('${tr.notifications} (${NotificationService.getUnread().length})'),            content: SizedBox(              width: 520,              child: notifications.isEmpty                  ? Center(child: Text(tr.noNotifications))                  : ListView.separated(                      shrinkWrap: true,                      itemCount: notifications.length,                      separatorBuilder: (_, __) => const Divider(),                      itemBuilder: (context, index) {                        final item = notifications[index];                        return ListTile(                          leading: Icon(                            item.isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined,                            color: item.isRead ? Colors.grey : Colors.green,                          ),                          title: Text(item.title),                          subtitle: Text(                            '${item.body}\n'                            '${tr.materials}: ${item.materialName ?? "-"}\n'                            '${tr.sku}: ${item.productSku ?? "-"}',                          ),                          isThreeLine: true,                          trailing: TextButton(                            onPressed: () {                              NotificationService.markRead(item.id);                              setState(() {});                              setDialogState(() {});                              Navigator.pop(ctx);                              final targetIndex = AuthService.isSupervisor ? 0 : 4;                              _onSelect(targetIndex);                            },                            child: Text(tr.goToOrders),                          ),                        );                      },                    ),          ),            actions: [              TextButton(                onPressed: () {                  NotificationService.markAllRead();                  setState(() {});                  Navigator.pop(ctx);                },                child: Text(tr.markAllRead),              ),              TextButton(                onPressed: () => Navigator.pop(ctx),                child: Text(tr.close),              ),            ],          );        },      ),    );  }
+  void _showGlobalNotifications() {    showDialog(      context: context,      builder: (ctx) => StatefulBuilder(        builder: (context, setDialogState) {          final notifications = NotificationService.getAll();          final tr = context.tr;          return AlertDialog(            title: Text('${tr.notifications} (${NotificationService.getUnread().length})'),            content: SizedBox(              width: 520,              child: notifications.isEmpty                  ? Center(child: Text(tr.noNotifications))                  : ListView.separated(                      shrinkWrap: true,                      itemCount: notifications.length,                      separatorBuilder: (_, __) => const Divider(),                      itemBuilder: (context, index) {                        final item = notifications[index];                        return ListTile(                          leading: Icon(                            item.isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined,                            color: item.isRead ? Colors.grey : Colors.green,                          ),                          title: Text(item.title),                          subtitle: Text(                            '${item.body}\n'                            '${tr.materials}: ${item.materialName ?? "-"}\n'                            '${tr.sku}: ${item.productSku ?? "-"}',                          ),                          isThreeLine: true,                          trailing: TextButton(                            onPressed: () {                              NotificationService.markRead(item.id);                              setState(() {});                              setDialogState(() {});                              Navigator.pop(ctx);                              final targetIndex = AuthService.isSupervisor ? 1 : 4;                              _onSelect(targetIndex);                            },                            child: Text(tr.goToOrders),                          ),                        );                      },                    ),          ),            actions: [              TextButton(                onPressed: () {                  NotificationService.markAllRead();                  setState(() {});                  Navigator.pop(ctx);                },                child: Text(tr.markAllRead),              ),              TextButton(                onPressed: () => Navigator.pop(ctx),                child: Text(tr.close),              ),            ],          );        },      ),    );  }
   Future<void> _logout() async {    final confirmed = await showDialog<bool>(      context: context,      builder: (ctx) => AlertDialog(        title: Text(context.tr.logout),        content: Text(context.tr.logoutConfirmMsg),        actions: [          TextButton(            onPressed: () => Navigator.pop(ctx, false),            child: Text(context.tr.cancel),          ),          ElevatedButton(            onPressed: () => Navigator.pop(ctx, true),            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),            child: Text(context.tr.logout, style: const TextStyle(color: Colors.white)),          ),        ],      ),    );    if (confirmed == true) await AuthService.logout();  }  Future<void> _checkForUpdates() async {    try {      final remote = await UpdateService.fetchLatestVersion();      if (!mounted) return;      if (remote == null) {        showToast(context, context.tr.updateCheckFailed, type: ToastType.error);        return;      }      final localVersion = await UpdateService.currentVersion;      final localBuild = await UpdateService.currentBuildNumber;      if (remote.isNewerThan(localVersion, localBuild)) {        if (!mounted) return;        showDialog(          context: context,          builder: (_) => UpdateDialog(version: remote),        );      } else {        showToast(context, context.tr.upToDate, type: ToastType.info);      }    } catch (_) {      if (mounted) showToast(context, context.tr.updateCheckFailed, type: ToastType.error);    }  }
 
 

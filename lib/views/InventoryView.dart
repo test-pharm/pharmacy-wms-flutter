@@ -20,7 +20,8 @@ import 'package:pharmacy_wms/widgets/empty_state.dart';
 import 'package:pharmacy_wms/widgets/toast.dart';
 
 class InventoryPage extends StatefulWidget {
-  const InventoryPage({super.key});
+  final String? initialAvailabilityFilter;
+  const InventoryPage({super.key, this.initialAvailabilityFilter});
   @override
   State<InventoryPage> createState() => _InventoryPageState();
 }
@@ -28,7 +29,13 @@ class InventoryPage extends StatefulWidget {
 class _InventoryPageState extends State<InventoryPage> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
-  String _availabilityFilter = 'All';
+  late String _availabilityFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _availabilityFilter = widget.initialAvailabilityFilter ?? 'All';
+  }
   String _categoryFilter = '';
   int? _sortColumnIndex;
   bool _sortAscending = true;
@@ -158,6 +165,10 @@ class _InventoryPageState extends State<InventoryPage> {
                 DropdownMenuItem(
                   value: 'Unavailable',
                   child: Text(context.tr.unavailable),
+                ),
+                DropdownMenuItem(
+                  value: 'Low Stock',
+                  child: Text(context.tr.statusLowStock),
                 ),
               ],
               onChanged: (value) {
@@ -1008,6 +1019,7 @@ class _InventoryPageState extends State<InventoryPage> {
     final matchesAvailability = switch (_availabilityFilter) {
       'Available' => product.isAvailable,
       'Unavailable' => !product.isAvailable,
+      'Low Stock' => product.quantity < (product.minStockLevel > 0 ? product.minStockLevel : 20),
       _ => true,
     };
     final matchesCategory = _categoryFilter.isEmpty || product.category == _categoryFilter;
