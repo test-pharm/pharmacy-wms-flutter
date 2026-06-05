@@ -13,10 +13,12 @@ import 'package:pdf/pdf.dart';
 
 import 'package:pdf/widgets.dart' as pw;
 
+import 'package:pharmacy_wms/Services/PdfService.dart';
+
 class StocktakePage extends StatefulWidget {
   const StocktakePage({
-super.key
-});
+    super.key
+  });
   @override  State<StocktakePage> createState() => _StocktakePageState();
 
 }
@@ -51,7 +53,7 @@ grouped.length
   ) async {
     final tr = context.tr;
     try {
-      final pdf = pw.Document();
+      final pdf = pw.Document(theme: await PdfService.getTheme());
       final isArabic = tr.isArabic;
       final now = DateTime.now();
 
@@ -71,7 +73,7 @@ grouped.length
             return pw.Container(
               alignment: pw.Alignment.centerRight,
               margin: const pw.EdgeInsets.only(top: 10),
-              decoration: pw.BoxDecoration(
+              decoration: const pw.BoxDecoration(
                 border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
               ),
               padding: const pw.EdgeInsets.only(top: 8),
@@ -91,10 +93,12 @@ grouped.length
             );
           },
           build: (pw.Context ctx) {
-            return [
+            final List<pw.Widget> contentWidgets = [];
+
+            contentWidgets.add(
               pw.Container(
                 padding: const pw.EdgeInsets.only(bottom: 12),
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   border: pw.Border(bottom: pw.BorderSide(color: PdfColor.fromInt(0xFF0A6B6E), width: 2.5)),
                 ),
                 child: pw.Row(
@@ -104,8 +108,8 @@ grouped.length
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          isArabic ? '\u062A\u0642\u0631\u064A\u0631 \u0627\u0644\u062C\u0631\u062F \u0627\u0644\u0634\u0627\u0645\u0644 \u0644\u0644\u0645\u0633\u062A\u0648\u062F\u0639' : 'Master Warehouse Inventory Ledger',
-                          style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF0A6B6E)),
+                          isArabic ? 'تقرير الجرد الشامل للمستودع' : 'Master Warehouse Inventory Ledger',
+                          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF0A6B6E)),
                         ),
                         pw.SizedBox(height: 4),
                         pw.Text(
@@ -131,8 +135,10 @@ grouped.length
                   ],
                 ),
               ),
-              pw.SizedBox(height: 14),
+            );
+            contentWidgets.add(pw.SizedBox(height: 14));
 
+            contentWidgets.add(
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -142,102 +148,118 @@ grouped.length
                   _pdfKpiCard('Low Stock Alerts', lowStockCount.toString(), PdfColors.orange700),
                 ],
               ),
-              pw.SizedBox(height: 20),
+            );
+            contentWidgets.add(pw.SizedBox(height: 20));
 
+            contentWidgets.add(
               pw.Text(
                 'Detailed Location & Batch Breakdown',
                 style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF0A6B6E)),
               ),
-              pw.SizedBox(height: 10),
+            );
+            contentWidgets.add(pw.SizedBox(height: 10));
 
-              ...sortedLocations.expand((location) {
-                final items = grouped[location]!;
-                final label = location.isEmpty ? tr.unspecified : location;
+            for (final location in sortedLocations) {
+              final items = grouped[location]!;
+              final label = location.isEmpty ? tr.unspecified : location;
 
-                final List<List<String>> tableData = [];
-                int serialNumber = 1;
+              final List<List<String>> tableData = [];
+              int serialNumber = 1;
 
-                for (final product in items) {
-                  if (product.batches.isEmpty) {
+              for (final product in items) {
+                if (product.batches.isEmpty) {
+                  tableData.add([
+                    serialNumber.toString(),
+                    product.sku,
+                    product.name,
+                    '- (No Batch)',
+                    product.quantity.toString(),
+                    product.unit.isEmpty ? '-' : product.unit,
+                    _formatExpiry(product.expiryDate),
+                    product.createdAt.toString().substring(0, 10),
+                  ]);
+                  serialNumber++;
+                } else {
+                  for (final batch in product.batches) {
                     tableData.add([
                       serialNumber.toString(),
                       product.sku,
-                      product.name,
-                      '- (No Batch)',
-                      product.quantity.toString(),
+                      '${product.name} (Batch)',
+                      batch.id.toString(),
+                      batch.quantity.toString(),
                       product.unit.isEmpty ? '-' : product.unit,
-                      _formatExpiry(product.expiryDate),
-                      product.createdAt.toString().substring(0, 10),
+                      _formatExpiry(batch.expiryDate),
+                      batch.receivedDate.toString().substring(0, 10),
                     ]);
                     serialNumber++;
-                  } else {
-                    for (final batch in product.batches) {
-                      tableData.add([
-                        serialNumber.toString(),
-                        product.sku,
-                        '${product.name} (Batch)',
-                        batch.id.toString(),
-                        batch.quantity.toString(),
-                        product.unit.isEmpty ? '-' : product.unit,
-                        _formatExpiry(batch.expiryDate),
-                        batch.receivedDate.toString().substring(0, 10),
-                      ]);
-                      serialNumber++;
-                    }
                   }
                 }
-                return [
-                  pw.Container(
-                    margin: const pw.EdgeInsets.only(top: 14, bottom: 6),
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: const pw.BoxDecoration(
-                      color: PdfColors.grey100,
-                      border: pw.Border(left: pw.BorderSide(color: PdfColor.fromInt(0xFF0A6B6E), width: 3)),
-                    ),
-                    child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(
-                          'Storage Zone: $label',
-                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-                        ),
-                        pw.Text(
-                          '${tableData.length} Active Batches Listed',
-                          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
-                        ),
-                      ],
-                    ),
+              }
+
+              contentWidgets.add(
+                pw.Container(
+                  margin: const pw.EdgeInsets.only(top: 14, bottom: 6),
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    border: pw.Border(left: pw.BorderSide(color: PdfColor.fromInt(0xFF0A6B6E), width: 3)),
                   ),
-                  pw.Table.fromTextArray(
-                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, color: PdfColors.white),
-                    cellStyle: const pw.TextStyle(fontSize: 8),
-                    headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0A6B6E)),
-                    border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                    columnWidths: {
-                      0: const pw.FixedColumnWidth(25),
-                      1: const pw.FixedColumnWidth(80),
-                      2: const pw.FixedColumnWidth(170),
-                      3: const pw.FixedColumnWidth(55),
-                      4: const pw.FixedColumnWidth(50),
-                      5: const pw.FixedColumnWidth(40),
-                      6: const pw.FixedColumnWidth(70),
-                      7: const pw.FixedColumnWidth(75),
-                    },
-                    headers: [
-                      'S/N',
-                      tr.sku,
-                      'Material Component Name',
-                      'Batch ID',
-                      'Batch Qty',
-                      tr.unit,
-                      tr.expiryDate,
-                      'Received Date',
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'Storage Zone: $label',
+                        style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.Text(
+                        '${tableData.length} Active Batches Listed',
+                        style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                      ),
                     ],
-                    data: tableData,
                   ),
-                  pw.SizedBox(height: 10),
-                ];
-              }),
+                ),
+              );
+
+              contentWidgets.add(
+                pw.Table.fromTextArray(
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, color: PdfColors.white),
+                  cellStyle: const pw.TextStyle(fontSize: 8),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0A6B6E)),
+                  border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                  columnWidths: {
+                    0: const pw.FixedColumnWidth(25),
+                    1: const pw.FixedColumnWidth(80),
+                    2: const pw.FixedColumnWidth(170),
+                    3: const pw.FixedColumnWidth(55),
+                    4: const pw.FixedColumnWidth(50),
+                    5: const pw.FixedColumnWidth(40),
+                    6: const pw.FixedColumnWidth(70),
+                    7: const pw.FixedColumnWidth(75),
+                  },
+                  headers: [
+                    'S/N',
+                    tr.sku,
+                    'Material Component Name',
+                    'Batch ID',
+                    'Batch Qty',
+                    tr.unit,
+                    tr.expiryDate,
+                    'Received Date',
+                  ],
+                  data: tableData,
+                ),
+              );
+              contentWidgets.add(pw.SizedBox(height: 10));
+            }
+
+            return [
+              pw.Directionality(
+                textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: contentWidgets,
+                ),
+              )
             ];
           },
         ),

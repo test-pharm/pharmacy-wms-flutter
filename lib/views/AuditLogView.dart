@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:printing/printing.dart';
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
 import 'package:pharmacy_wms/Models/app_localizations.dart';
 import 'package:pharmacy_wms/Models/auditLogModel.dart';
@@ -113,6 +118,19 @@ class _AuditLogPageState extends State<AuditLogPage> {
                   ),
                 ),
                 const Spacer(),
+                if (!_loading) ...[
+                  ElevatedButton.icon(
+                    onPressed: _exportToExcel,
+                    icon: const Icon(Icons.table_chart_outlined, size: 16),
+                    label: Text(tr.export),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF198754),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   tooltip: tr.refresh,
@@ -330,6 +348,89 @@ class _AuditLogPageState extends State<AuditLogPage> {
         return _LogCard(log: log, isDark: isDark);
       },
     );
+  }
+
+  Future<void> _exportToExcel() async {
+    try {
+      final tr = context.tr;
+      final excel = Excel.createExcel();
+      final sheet = excel['Audit Log'];
+      final headerStyle = CellStyle(
+        bold: true,
+        backgroundColorHex: ExcelColor.fromInt(0xFF0D6EFD),
+        fontColorHex: ExcelColor.fromInt(0xFFFFFFFF),
+      );
+
+      final headers = [
+        'ID',
+        tr.isArabic ? "المستخدم" : "User Name",
+        tr.isArabic ? "العملية" : "Action",
+        tr.isArabic ? "نوع الكيان" : "Entity Type",
+        tr.isArabic ? "التفاصيل" : "Details",
+        tr.isArabic ? "التاريخ والوقت" : "Timestamp",
+      ];
+
+      final headerRow = headers.map((h) => TextCellValue(h) as CellValue).toList();
+      sheet.appendRow(headerRow);
+      for (int i = 0; i < headers.length; i++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+      }
+
+      for (final log in _filtered) {
+        sheet.appendRow([
+          TextCellValue(log.id.toString()),
+          TextCellValue(log.userName),
+          TextCellValue(log.action),
+          TextCellValue(log.entityType),
+          TextCellValue(log.details ?? '-'),
+          TextCellValue(log.timestamp.toLocal().toString().substring(0, 19)),
+        ]);
+      }
+
+      // Auto width
+      for (int c = 0; c < headers.length; c++) {
+        int maxW = 10;
+        for (int r = 0; r <= _filtered.length; r++) {
+          final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r));
+          final v = cell.value?.toString() ?? '';
+          if (v.length > maxW) maxW = v.length;
+        }
+        sheet.setColumnWidth(c, (maxW + 3).toDouble());
+      }
+
+      final bytes = excel.encode();
+      if (bytes == null) throw Exception('Failed to encode Excel');
+
+      if (kIsWeb) {
+        await Printing.sharePdf(
+          bytes: Uint8List.fromList(bytes),
+          filename: 'audit_log_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        );
+        return;
+      }
+
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: tr.exportReport,
+        fileName: 'audit_log_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+
+      if (outputFile == null) return;
+      await File(outputFile).writeAsBytes(bytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${tr.success}: $outputFile')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${context.tr.error}: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
 

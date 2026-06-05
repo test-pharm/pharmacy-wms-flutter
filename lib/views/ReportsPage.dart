@@ -1,34 +1,25 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-
 import 'package:flutter/services.dart';
-
 import 'package:fl_chart/fl_chart.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'package:pharmacy_wms/Models/ProductProvider.dart';
-
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
-
 import 'package:pharmacy_wms/Services/MaterialService.dart';
-
 import 'package:pharmacy_wms/Services/notificationService.dart';
+import 'package:pharmacy_wms/Services/PdfService.dart';
 
 import 'package:printing/printing.dart';
-
 import 'package:pdf/pdf.dart';
-
 import 'package:pdf/widgets.dart' as pw;
-
 import 'package:excel/excel.dart' hide Border;
-
 import 'package:path_provider/path_provider.dart';
-
 import 'package:pharmacy_wms/Models/app_localizations.dart';
-
 import 'package:pharmacy_wms/Models/materialModel.dart';
-
 import 'package:pharmacy_wms/widgets/skeletons.dart';
 const _pieColors = [  Colors.blue, Colors.teal, Colors.orange, Colors.purple,  Colors.red, Colors.green, Colors.indigo, Colors.amber,];
 
@@ -576,37 +567,23 @@ parsed.year
 
   Future<void> _printReport(ProductProvider provider) async {
     try {
-      final t = context.tr;
-      final pdf = pw.Document();
-      final materials = provider.products;
-      pdf.addPage(pw.Page(        pageFormat: PdfPageFormat.a4,        build: (pw.Context context) {
-          final headers = [            t.materialName, t.category, t.quantity, t.expiryDate, t.status,          ];
-          final statusMap = <String, String>{
-            'Good': t.statusGood,            'Expiring Soon': t.statusExpiringSoon,            'Expired': t.statusExpired,            'Low Stock': t.statusLowStock,          
-};
-          return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [            pw.Text(t.reportsTitle,                style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),            pw.SizedBox(height: 10),            pw.Text('${
-t.generatedPrefix
-}${
-DateTime.now().toString().substring(0, 16)
-}',                style: const pw.TextStyle(fontSize: 12)),            pw.SizedBox(height: 20),            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [              _pdfKpi(t.totalMaterials, materials.length.toString()),              _pdfKpi(t.statusExpiringSoon, provider.expiringSoonCount.toString()),              _pdfKpi(t.statusLowStock, provider.lowStockCount.toString()),              _pdfKpi(t.criticalAlertsTitle,                  provider.getCriticalAlertsCount().toString()),            ]),            pw.SizedBox(height: 30),            pw.Text(t.inventoryTitle,                style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),            pw.SizedBox(height: 10),            pw.Table.fromTextArray(              headers: headers,              data: materials.map((m) {
-                final rawStatus = MaterialService.getMaterialStatus(m);
-                return [m.name, m.category, m.quantity.toString(),                    m.expiryDate, statusMap[rawStatus] ?? rawStatus];
-              
-}).toList(),              headerStyle: pw.TextStyle(                  fontWeight: pw.FontWeight.bold, fontSize: 10),              cellStyle: const pw.TextStyle(fontSize: 9),              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),            ),          ]);
-        
-},      ));
+      pw.Document pdf;
+      if (_tabCtrl.index == 2) {
+        pdf = await PdfService.generateExpiryReport(provider.products, context.tr);
+      } else {
+        pdf = await PdfService.generateInventoryReport(
+          provider.products,
+          context.tr,
+          provider.lowStockCount,
+          provider.expiringSoonCount,
+          provider.getCriticalAlertsCount(),
+        );
+      }
       if (mounted) _showPrintOptionsDialog(pdf);
-    
-} catch (e) {
-      if (mounted) _showErrorDialog('${
-context.tr.errorGeneratingPdf
-}: $e');
-    
-}  
-}  pw.Widget _pdfKpi(String title, String value) {
-    return pw.Container(      padding: const pw.EdgeInsets.all(10),      decoration: pw.BoxDecoration(        border: pw.Border.all(color: PdfColors.grey),        borderRadius: pw.BorderRadius.circular(5),      ),      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [        pw.Text(title, style: const pw.TextStyle(fontSize: 10)),        pw.SizedBox(height: 5),        pw.Text(value, style: pw.TextStyle(            fontSize: 16, fontWeight: pw.FontWeight.bold)),      ]),    );
-  
-}
+    } catch (e) {
+      if (mounted) _showErrorDialog('${context.tr.errorGeneratingPdf}: $e');
+    }
+  }
 
   void _showPrintOptionsDialog(pw.Document pdf) {
     final t = context.tr;
@@ -662,69 +639,108 @@ context.tr.error
       final filtered = _filteredList(provider);
       final excel = Excel.createExcel();
       final sheet = excel['Reports'];
-      final headerStyle = CellStyle(        bold: true, backgroundColorHex: ExcelColor.fromInt(0xFF0D6EFD),        fontColorHex: ExcelColor.fromInt(0xFFFFFFFF),      );
-      final headers = [context.tr.name, context.tr.sku, context.tr.category,          context.tr.quantity, context.tr.unit, context.tr.expiryDate,          context.tr.status, context.tr.storageLocation];
+      final headerStyle = CellStyle(
+        bold: true,
+        backgroundColorHex: ExcelColor.fromInt(0xFF0D6EFD),
+        fontColorHex: ExcelColor.fromInt(0xFFFFFFFF),
+      );
+      final headers = [
+        context.tr.name,
+        context.tr.sku,
+        context.tr.category,
+        context.tr.quantity,
+        context.tr.unit,
+        context.tr.expiryDate,
+        context.tr.status,
+        context.tr.storageLocation
+      ];
       final headerRow = headers.map((h) => TextCellValue(h) as CellValue).toList();
       sheet.appendRow(headerRow);
-      for (int i = 0;
- i < headers.length;
- i++) {
-        sheet.cell(CellIndex.indexByColumnRow(            columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
-      
-}
+      for (int i = 0; i < headers.length; i++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+      }
 
       final statusColors = <String, String>{
-        'Good': '28A745', 'Expiring Soon': 'FFA500',        'Expired': 'DC3545', 'Low Stock': 'FF8C00',      
-};
+        'Good': '28A745',
+        'Expiring Soon': 'FFA500',
+        'Expired': 'DC3545',
+        'Low Stock': 'FF8C00',
+      };
       for (final m in filtered) {
         final status = MaterialService.getMaterialStatus(m);
         final colorHex = statusColors[status] ?? '000000';
         final rowIdx = sheet.maxRows;
-        sheet.appendRow([          TextCellValue(m.name),          TextCellValue(m.sku),          TextCellValue(m.category),          TextCellValue(m.quantity.toString()),          TextCellValue(m.unit.isEmpty ? '-' : m.unit),          TextCellValue(_formatDate(m.expiryDate)),          TextCellValue(status),          TextCellValue(m.supplier.isEmpty ? '-' : m.supplier),        ]);
+        sheet.appendRow([
+          TextCellValue(m.name),
+          TextCellValue(m.sku),
+          TextCellValue(m.category),
+          TextCellValue(m.quantity.toString()),
+          TextCellValue(m.unit.isEmpty ? '-' : m.unit),
+          TextCellValue(_formatDate(m.expiryDate)),
+          TextCellValue(status),
+          TextCellValue(m.supplier.isEmpty ? '-' : m.supplier),
+        ]);
         final fg = ExcelColor.fromInt(int.parse(colorHex, radix: 16) | 0xFF000000);
         final bg = ExcelColor.fromInt((int.parse(colorHex, radix: 16) & 0xFFFFFF) | 0x20000000);
-        sheet.cell(CellIndex.indexByColumnRow(            columnIndex: 6, rowIndex: rowIdx)).cellStyle = CellStyle(          fontColorHex: fg, backgroundColorHex: bg,        );
-      
-}      _autoWidth(sheet, headers.length, filtered);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIdx)).cellStyle = CellStyle(
+          fontColorHex: fg,
+          backgroundColorHex: bg,
+        );
+      }
+      _autoWidth(sheet, headers.length, filtered);
       final totalQty = filtered.fold<int>(0, (s, m) => s + m.quantity);
-      sheet.appendRow([        TextCellValue(''), TextCellValue(''),        TextCellValue(''), TextCellValue(''),        TextCellValue(''), TextCellValue(''),        TextCellValue(context.tr.total),        TextCellValue(totalQty.toString()),      ]);
+      sheet.appendRow([
+        TextCellValue(''),
+        TextCellValue(''),
+        TextCellValue(''),
+        TextCellValue(''),
+        TextCellValue(''),
+        TextCellValue(''),
+        TextCellValue(context.tr.total),
+        TextCellValue(totalQty.toString()),
+      ]);
       final sumRowIdx = sheet.maxRows - 1;
-      for (int i = 0;
- i < 8;
- i++) {
-        sheet.cell(CellIndex.indexByColumnRow(            columnIndex: i, rowIndex: sumRowIdx)).cellStyle = CellStyle(          bold: true, backgroundColorHex: ExcelColor.fromInt(0xFFF0F0F0),        );
-      
-}
+      for (int i = 0; i < 8; i++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: sumRowIdx)).cellStyle = CellStyle(
+          bold: true,
+          backgroundColorHex: ExcelColor.fromInt(0xFFF0F0F0),
+        );
+      }
 
-      final dir = await getTemporaryDirectory();
-      final path = '${
-dir.path
-}/pharmacy_report_'          '${
-DateTime.now().millisecondsSinceEpoch
-}.xlsx';
       final bytes = excel.encode();
       if (bytes == null) throw Exception('Failed to encode Excel');
-      await File(path).writeAsBytes(bytes);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(        SnackBar(content: Text('${
-context.tr.exportReport
-}: $path'),            duration: const Duration(seconds: 6)),      );
-      await Clipboard.setData(ClipboardData(text: path));
+
+      if (kIsWeb) {
+        await Printing.sharePdf(
+          bytes: Uint8List.fromList(bytes),
+          filename: 'pharmacy_report_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        );
+        return;
+      }
+
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: context.tr.exportReport,
+        fileName: 'pharmacy_report_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+
+      if (outputFile == null) return;
+      await File(outputFile).writeAsBytes(bytes);
+
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(          SnackBar(content: Text('${
-context.tr.exportReport
-}: $path'),              duration: const Duration(seconds: 3)),        );
-      
-}    
-} catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${context.tr.exportReport}: $outputFile'), duration: const Duration(seconds: 3)),
+        );
+      }
+    } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(          SnackBar(content: Text('${
-context.tr.errorGeneratingPdf
-}: $e'),              backgroundColor: Colors.red),        );
-      
-}    
-}  
-}
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${context.tr.errorGeneratingPdf}: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   void _autoWidth(Sheet sheet, int cols, List<MaterialModel> data) {
     for (int c = 0;

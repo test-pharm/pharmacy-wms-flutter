@@ -1,5 +1,13 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:pharmacy_wms/Models/app_localizations.dart';
 import 'package:pharmacy_wms/Models/orderModel.dart';
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
@@ -7,8 +15,9 @@ import 'package:pharmacy_wms/Models/ProductProvider.dart';
 import 'package:pharmacy_wms/Services/orderService.dart';
 import 'package:pharmacy_wms/Services/ApprovalService.dart';
 import 'package:pharmacy_wms/Services/notificationService.dart';
+import 'package:pharmacy_wms/Services/PdfService.dart';
 
-enum OperationType { materialReceipt, materialDispatch, expiryEdit }
+enum OperationType { materialReceipt, materialDispatch, expiryEdit, materialDisposal }
 
 class OperationItem {
   final String materialName;
@@ -114,6 +123,7 @@ class _OperationsPageState extends State<OperationsPage> {
 
     final Map<String, List<OrderModel>> receiptGroups = {};
     final Map<String, List<OrderModel>> dispatchGroups = {};
+    final Map<String, List<OrderModel>> disposalGroups = {};
 
     for (final order in _orders) {
       final inv = order.invoiceNumber;
@@ -122,6 +132,8 @@ class _OperationsPageState extends State<OperationsPage> {
         receiptGroups.putIfAbsent(inv, () => []).add(order);
       } else if (order.type == OrderType.export) {
         dispatchGroups.putIfAbsent(inv, () => []).add(order);
+      } else if (order.type == OrderType.disposal) {
+        disposalGroups.putIfAbsent(inv, () => []).add(order);
       }
     }
 
@@ -153,6 +165,26 @@ class _OperationsPageState extends State<OperationsPage> {
         type: OperationType.materialDispatch,
         date: orders.map((o) => o.createdAt).reduce((a, b) => a.isBefore(b) ? a : b),
         partyName: first.recipient.isNotEmpty ? first.recipient : 'Unknown',
+        status: 'Completed',
+        items: orders.map((o) => OperationItem(
+          materialName: o.productName,
+          materialSku: o.productSku,
+          quantity: o.quantity,
+          unit: o.unit,
+          logNumber: o.logNumber,
+        )).toList(),
+        rawData: orders,
+      ));
+    });
+
+    disposalGroups.forEach((inv, orders) {
+      if (orders.isEmpty) return;
+      final first = orders.first;
+      tempOps.add(WarehouseOperation(
+        uniqueId: inv,
+        type: OperationType.materialDisposal,
+        date: orders.map((o) => o.createdAt).reduce((a, b) => a.isBefore(b) ? a : b),
+        partyName: first.notes ?? context.tr.disposal,
         status: 'Completed',
         items: orders.map((o) => OperationItem(
           materialName: o.productName,
@@ -322,6 +354,7 @@ class _OperationsPageState extends State<OperationsPage> {
       OperationType.materialReceipt => tr.orderTypeAdd,
       OperationType.materialDispatch => tr.orderTypeExport,
       OperationType.expiryEdit => tr.orderTypeEdit,
+      OperationType.materialDisposal => tr.disposal,
     };
     showDialog(
       context: context,
@@ -344,6 +377,8 @@ class _OperationsPageState extends State<OperationsPage> {
                 _detailRow(tr.supplier, op.partyName),
               if (op.type == OperationType.materialDispatch)
                 _detailRow(tr.recipient, op.partyName),
+              if (op.type == OperationType.materialDisposal)
+                _detailRow(tr.disposalMethod, op.partyName),
               if (op.type == OperationType.expiryEdit) ...[
                 _detailRow(tr.requestedBy, op.partyName),
                 _detailRow(tr.status, op.status),
@@ -360,6 +395,19 @@ class _OperationsPageState extends State<OperationsPage> {
           ),
         ),
         actions: [
+          if (op.type != OperationType.expiryEdit)
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _printOperationDocument(op);
+              },
+              icon: const Icon(Icons.print, size: 16),
+              label: Text(tr.print),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D6EFD),
+                foregroundColor: Colors.white,
+              ),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(tr.close),
@@ -367,6 +415,30 @@ class _OperationsPageState extends State<OperationsPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _printOperationDocument(WarehouseOperation op) async {
+    try {
+      final tr = context.tr;
+      pw.Document pdf;
+      final orders = op.rawData as List<OrderModel>;
+      if (op.type == OperationType.materialReceipt) {
+        pdf = await PdfService.generateReceiptDocument(op.uniqueId, op.partyName, op.date, orders, tr);
+      } else if (op.type == OperationType.materialDispatch) {
+        pdf = await PdfService.generateDispatchDocument(op.uniqueId, op.partyName, op.date, orders, tr);
+      } else if (op.type == OperationType.materialDisposal) {
+        pdf = await PdfService.generateDisposalDocument(op.uniqueId, op.partyName, op.date, orders, tr);
+      } else {
+        return;
+      }
+      await Printing.layoutPdf(onLayout: (fmt) async => pdf.save());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${context.tr.errorGeneratingPdf}: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _materialCard(OperationItem item, OperationType type, bool isDark) {
@@ -468,6 +540,19 @@ class _OperationsPageState extends State<OperationsPage> {
                         ),
                       ),
                 const Spacer(),
+                if (!_loading) ...[
+                  ElevatedButton.icon(
+                    onPressed: _exportToExcel,
+                    icon: const Icon(Icons.table_chart_outlined, size: 16),
+                    label: Text(tr.export),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF198754),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ],
             ),
             const SizedBox(height: 20),
@@ -837,6 +922,7 @@ class _OperationsPageState extends State<OperationsPage> {
       OperationType.materialReceipt => Colors.green,
       OperationType.materialDispatch => Colors.blue,
       OperationType.expiryEdit => Colors.orange,
+      OperationType.materialDisposal => Colors.redAccent,
     };
   }
 
@@ -845,6 +931,7 @@ class _OperationsPageState extends State<OperationsPage> {
       OperationType.materialReceipt => Icons.add_circle_outline,
       OperationType.materialDispatch => Icons.remove_circle_outline,
       OperationType.expiryEdit => Icons.edit_calendar_outlined,
+      OperationType.materialDisposal => Icons.delete_outline,
     };
   }
 
@@ -853,6 +940,7 @@ class _OperationsPageState extends State<OperationsPage> {
       OperationType.materialReceipt => tr.orderTypeAdd,
       OperationType.materialDispatch => tr.orderTypeExport,
       OperationType.expiryEdit => tr.orderTypeEdit,
+      OperationType.materialDisposal => tr.disposal,
     };
   }
 
@@ -895,5 +983,98 @@ class _OperationsPageState extends State<OperationsPage> {
     final m = parsed.month.toString().padLeft(2, '0');
     final d = parsed.day.toString().padLeft(2, '0');
     return '${parsed.year}-$m-$d';
+  }
+
+  Future<void> _exportToExcel() async {
+    try {
+      final tr = context.tr;
+      final excel = Excel.createExcel();
+      final sheet = excel['Operations Log'];
+      final headerStyle = CellStyle(
+        bold: true,
+        backgroundColorHex: ExcelColor.fromInt(0xFF0D6EFD),
+        fontColorHex: ExcelColor.fromInt(0xFFFFFFFF),
+      );
+      final headers = [
+        tr.orderId,
+        tr.orderType,
+        tr.date,
+        tr.isArabic ? "الجهة" : "Party/User",
+        tr.status,
+        tr.isArabic ? "المادة" : "Material",
+        tr.sku,
+        tr.quantity,
+        tr.unit,
+        tr.isArabic ? "رقم التشغيلة" : "Batch ID",
+      ];
+      final headerRow = headers.map((h) => TextCellValue(h) as CellValue).toList();
+      sheet.appendRow(headerRow);
+      for (int i = 0; i < headers.length; i++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+      }
+
+      final filtered = _getFilteredOperations();
+      for (final op in filtered) {
+        final typeLabel = _typeLabel(op.type, tr);
+        for (final item in op.items) {
+          sheet.appendRow([
+            TextCellValue(op.uniqueId),
+            TextCellValue(typeLabel),
+            TextCellValue(_formatDate(op.date)),
+            TextCellValue(op.partyName),
+            TextCellValue(op.status),
+            TextCellValue(item.materialName),
+            TextCellValue(item.materialSku),
+            TextCellValue(item.quantity.toString()),
+            TextCellValue(item.unit.isEmpty ? '-' : item.unit),
+            TextCellValue(item.logNumber ?? '-'),
+          ]);
+        }
+      }
+
+      // Auto-width
+      for (int c = 0; c < headers.length; c++) {
+        int maxW = 10;
+        for (int r = 0; r <= sheet.maxRows; r++) {
+          final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r));
+          final v = cell.value?.toString() ?? '';
+          if (v.length > maxW) maxW = v.length;
+        }
+        sheet.setColumnWidth(c, (maxW + 3).toDouble());
+      }
+
+      final bytes = excel.encode();
+      if (bytes == null) throw Exception('Failed to encode Excel');
+
+      if (kIsWeb) {
+        await Printing.sharePdf(
+          bytes: Uint8List.fromList(bytes),
+          filename: 'operations_log_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        );
+        return;
+      }
+
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: tr.exportReport,
+        fileName: 'operations_log_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+
+      if (outputFile == null) return;
+      await File(outputFile).writeAsBytes(bytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${tr.success}: $outputFile')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${context.tr.error}: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
