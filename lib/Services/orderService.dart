@@ -12,8 +12,16 @@ class OrderService {
   static final List<OrderModel> _orders = [];
   static final ValueNotifier<int> changes = ValueNotifier<int>(0);
   static bool _loaded = false;
+  static bool _listenerRegistered = false;
 
   static Future<void> init() async {
+    if (!_listenerRegistered) {
+      OfflineService.syncCompletedEvents.addListener(() async {
+        await clearOrders();
+        await _fetchOrders();
+      });
+      _listenerRegistered = true;
+    }
     if (!_loaded) await _fetchOrders();
   }
 
@@ -94,6 +102,10 @@ class OrderService {
         recipient: body['recipient']?.toString() ?? '',
         createdBy: AuthService.currentUser?.fullName ?? 'Storekeeper',
       );
+      final cachedOrders = await OfflineService.getCachedOrders();
+      cachedOrders.insert(0, localOrder);
+      await OfflineService.cacheOrders(cachedOrders);
+
       _orders.insert(0, localOrder);
       changes.value++;
 

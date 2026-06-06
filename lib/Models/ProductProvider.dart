@@ -17,6 +17,7 @@ import 'package:pharmacy_wms/Services/TransliterationService.dart';
 import 'package:pharmacy_wms/Services/alertService.dart';
 
 import 'package:pharmacy_wms/Services/thresholdService.dart';
+import 'package:pharmacy_wms/Services/OfflineService.dart';
 
 class ProductProvider extends ChangeNotifier {
   List<MaterialModel> _products = [];
@@ -289,33 +290,36 @@ class _ProductProviderScopeState extends State<ProductProviderScope> {
     super.initState();
     AuthService.sessionChanges.addListener(_handleSessionChange);
     languageNotifier.addListener(_handleLanguageChange);
+    OfflineService.syncCompletedEvents.addListener(_handleSyncComplete);
     _handleSessionChange();
-  
-}
+  }
   @override  void dispose() {
     AuthService.sessionChanges.removeListener(_handleSessionChange);
     languageNotifier.removeListener(_handleLanguageChange);
+    OfflineService.syncCompletedEvents.removeListener(_handleSyncComplete);
     _provider.dispose();
     super.dispose();
-  
-}
+  }
+
+  void _handleSyncComplete() {
+    if (AuthService.isAuthenticated) {
+      _provider.loadProducts();
+    }
+  }
 
   void _handleSessionChange() {
     if (AuthService.isAuthenticated) {
       _provider.loadProducts();
-    
-} else {
+    } else {
       _provider.clear(notify: true);
-    
-}  
-}
+    }  
+  }
   void _handleLanguageChange() {
     if (AuthService.isAuthenticated) {
       TransliterationService.clearCache();
       _provider.loadProducts();
-    
-}  
-}
+    }  
+  }
   @override  Widget build(BuildContext context) {
     return AnimatedBuilder(      animation: _provider,      builder: (context, _) {
         return _ProductProviderInherited(          provider: _provider,          child: widget.child,        );

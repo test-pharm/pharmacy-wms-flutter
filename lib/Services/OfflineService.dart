@@ -18,6 +18,7 @@ class OfflineService {
   static late Box _pendingBox;
   static bool _initialized = false;
   static final ValueNotifier<int> pendingCount = ValueNotifier<int>(0);
+  static final ValueNotifier<int> syncCompletedEvents = ValueNotifier<int>(0);
 
   static Future<void> init() async {
     if (_initialized) return;
@@ -95,14 +96,20 @@ class OfflineService {
       return (aMap['timestamp'] as String).compareTo(bMap['timestamp'] as String);
     });
 
+    bool syncedAny = false;
     for (final key in keys) {
       final op = Map<String, dynamic>.from(_pendingBox.get(key) as Map);
       final success = await _replayOperation(op);
       if (success) {
         await _pendingBox.delete(key);
+        syncedAny = true;
       }
     }
     pendingCount.value = _pendingBox.length;
+
+    if (syncedAny) {
+      syncCompletedEvents.value++;
+    }
   }
 
   static Future<bool> _replayOperation(Map<String, dynamic> op) async {
