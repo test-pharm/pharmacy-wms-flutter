@@ -41,7 +41,8 @@ class UpdateService {
 
   static Future<AppVersion?> fetchLatestVersion() async {
     try {
-      final remote = await _fetchFrom(_fallbackUrl);
+      final cacheBuster = DateTime.now().millisecondsSinceEpoch;
+      final remote = await _fetchFrom('$_fallbackUrl?t=$cacheBuster');
       if (remote != null) {
         _cachedRemote = remote;
         return remote;
