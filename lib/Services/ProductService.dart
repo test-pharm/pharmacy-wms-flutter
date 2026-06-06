@@ -1,50 +1,81 @@
 import 'dart:convert';
-
-
+import 'package:flutter/foundation.dart';
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
-
 import 'package:pharmacy_wms/Models/materialModel.dart';
-
 import 'package:pharmacy_wms/Services/api_config.dart';
-
 import 'package:http/http.dart' as http;
-
+import 'package:pharmacy_wms/Services/OfflineService.dart';
+import 'package:pharmacy_wms/Services/ConnectivityService.dart';
 
 class ProductService {
   static String get _baseUrl => '${ApiConfig.baseUrl}/Products';
 
   static Future<List<MaterialModel>> getAllProducts() async {
-    final response = await _get(Uri.parse(_baseUrl));
-    final decoded = _decodeBody(response.body);
-    if (response.statusCode == 200) {
-      final items = _extractItems(decoded);
-      return items.map(MaterialModel.fromJson).toList();
+    try {
+      final response = await _get(Uri.parse(_baseUrl));
+      final decoded = _decodeBody(response.body);
+      if (response.statusCode == 200) {
+        final items = _extractItems(decoded);
+        final list = items.map(MaterialModel.fromJson).toList();
+        await OfflineService.cacheProducts(list);
+        return list;
+      }
+      throw Exception(await _extractError(response.statusCode, decoded));
+    } catch (e) {
+      debugPrint('[ProductService] getAllProducts failed: $e');
+      final cached = await OfflineService.getCachedProducts();
+      if (cached.isNotEmpty) return cached;
+      rethrow;
     }
-
-
-    throw Exception(await _extractError(response.statusCode, decoded));
   }
-
-
-
 
   static Future<List<MaterialModel>> getAdminProducts() async {
-    final response = await _get(Uri.parse('$_baseUrl/AdminProducts'));
-    final decoded = _decodeBody(response.body);
+    try {
+      final response = await _get(Uri.parse('$_baseUrl/AdminProducts'));
+      final decoded = _decodeBody(response.body);
 
-    if (response.statusCode == 200) {
-      final items = _extractItems(decoded);
-      return items.map(MaterialModel.fromJson).toList();
+      if (response.statusCode == 200) {
+        final items = _extractItems(decoded);
+        final list = items.map(MaterialModel.fromJson).toList();
+        await OfflineService.cacheProducts(list);
+        return list;
+      }
+      throw Exception(await _extractError(response.statusCode, decoded));
+    } catch (e) {
+      debugPrint('[ProductService] getAdminProducts failed: $e');
+      final cached = await OfflineService.getCachedProducts();
+      if (cached.isNotEmpty) return cached;
+      rethrow;
     }
-
-
-    throw Exception(await _extractError(response.statusCode, decoded));
   }
 
-
-
-
   static Future<void> addProduct(Map<String, dynamic> body) async {
+    if (!ConnectivityService().isOnline.value) {
+      await OfflineService.queueOperation(
+        method: 'POST',
+        endpoint: '/Products',
+        body: body,
+      );
+      final cached = await OfflineService.getCachedProducts();
+      final newMat = MaterialModel(
+        id: 'TEMP-${DateTime.now().millisecondsSinceEpoch}',
+        name: body['name']?.toString() ?? '',
+        sku: body['sku']?.toString() ?? '',
+        quantity: body['quantity'] is int ? body['quantity'] as int : 0,
+        unit: body['unit']?.toString() ?? '',
+        category: body['categoryName']?.toString() ?? body['category']?.toString() ?? '',
+        supplier: body['supplier']?.toString() ?? '',
+        createdAt: DateTime.now(),
+        isAvailable: true,
+        minStockLevel: body['minStockLevel'] is int ? body['minStockLevel'] as int : 0,
+        categoryId: body['categoryId'] is int ? body['categoryId'] as int : 0,
+        expiryDate: body['expiryDate']?.toString() ?? '',
+        lot: body['lot']?.toString() ?? '',
+      );
+      cached.insert(0, newMat);
+      await OfflineService.cacheProducts(cached);
+      return;
+    }
     final response = await _post(Uri.parse(_baseUrl), body);
     final decoded = _decodeBody(response.body);
 
@@ -52,26 +83,38 @@ class ProductService {
       return;
     }
 
-
     throw Exception(await _extractError(response.statusCode, decoded));
   }
-
-
-
 
   static Future<void> updateProduct(
     String id,
     Map<String, dynamic> body,
   ) async {
-    // Try PATCH first; if the server returns 405 (Method Not Allowed) fall
-    // back to PUT — ASP.NET backends vary in which verb they expose.
+    if (!ConnectivityService().isOnline.value) {
+      await OfflineService.queueOperation(
+        method: 'PUT',
+        endpoint: '/Products/$id',
+        body: body,
+      );
+      final cached = await OfflineService.getCachedProducts();
+      final idx = cached.indexWhere((m) => m.id == id);
+      if (idx != -1) {
+        cached[idx] = cached[idx].copyWith(
+          name: body['name']?.toString() ?? cached[idx].name,
+          sku: body['sku']?.toString() ?? cached[idx].sku,
+          quantity: body['quantity'] is int ? body['quantity'] as int : cached[idx].quantity,
+          minStockLevel: body['minStockLevel'] is int ? body['minStockLevel'] as int : cached[idx].minStockLevel,
+          isAvailable: body['isAvailable'] is bool ? body['isAvailable'] as bool : cached[idx].isAvailable,
+        );
+        await OfflineService.cacheProducts(cached);
+      }
+      return;
+    }
     http.Response response = await _patch(Uri.parse('$_baseUrl/$id'), body);
 
     if (response.statusCode == 405) {
       response = await _put(Uri.parse('$_baseUrl/$id'), body);
     }
-
-
 
     final decoded = _decodeBody(response.body);
 
@@ -81,14 +124,21 @@ class ProductService {
       return;
     }
 
-
     throw Exception(await _extractError(response.statusCode, decoded));
   }
 
-
-
-
   static Future<String?> deleteProduct(String id) async {
+    if (!ConnectivityService().isOnline.value) {
+      await OfflineService.queueOperation(
+        method: 'DELETE',
+        endpoint: '/Products/$id',
+        body: {},
+      );
+      final cached = await OfflineService.getCachedProducts();
+      cached.removeWhere((m) => m.id == id);
+      await OfflineService.cacheProducts(cached);
+      return null;
+    }
     try {
       final response = await _delete(Uri.parse('$_baseUrl/$id'));
       final decoded = _decodeBody(response.body);
@@ -105,17 +155,19 @@ class ProductService {
     }
   }
 
-
-
-
   static Future<List<Map<String, dynamic>>> getBatches(String productId) async {
-    final response = await _get(Uri.parse('$_baseUrl/$productId/batches'));
-    final decoded = _decodeBody(response.body);
-    if (response.statusCode == 200) {
-      final items = _extractItems(decoded);
-      return items;
+    try {
+      final response = await _get(Uri.parse('$_baseUrl/$productId/batches'));
+      final decoded = _decodeBody(response.body);
+      if (response.statusCode == 200) {
+        final items = _extractItems(decoded);
+        return items;
+      }
+      throw Exception(await _extractError(response.statusCode, decoded));
+    } catch (e) {
+      debugPrint('[ProductService] getBatches failed: $e');
+      return [];
     }
-    throw Exception(await _extractError(response.statusCode, decoded));
   }
 
   static Future<Map<String, dynamic>> receiveStock(
@@ -123,10 +175,25 @@ class ProductService {
     int quantity,
     String? expiryDate,
   ) async {
-    final response = await _post(Uri.parse('$_baseUrl/$productId/batches/receive'), {
+    final body = {
       'quantity': quantity,
       if (expiryDate != null && expiryDate.isNotEmpty) 'expiryDate': expiryDate,
-    });
+    };
+    if (!ConnectivityService().isOnline.value) {
+      await OfflineService.queueOperation(
+        method: 'POST',
+        endpoint: '/Products/$productId/batches/receive',
+        body: body,
+      );
+      final cached = await OfflineService.getCachedProducts();
+      final idx = cached.indexWhere((m) => m.id == productId);
+      if (idx != -1) {
+        cached[idx] = cached[idx].copyWith(quantity: cached[idx].quantity + quantity);
+        await OfflineService.cacheProducts(cached);
+      }
+      return {'success': true, 'message': 'Stock receipt queued'};
+    }
+    final response = await _post(Uri.parse('$_baseUrl/$productId/batches/receive'), body);
     final decoded = _decodeBody(response.body);
     if (response.statusCode == 200) {
       return decoded is Map<String, dynamic> ? decoded : {};
@@ -138,16 +205,39 @@ class ProductService {
     String productId,
     int quantity,
   ) async {
-    final response =
-        await _get(Uri.parse('$_baseUrl/$productId/batches/fefo?quantity=$quantity'));
-    final decoded = _decodeBody(response.body);
-    if (response.statusCode == 200) {
-      return decoded is Map<String, dynamic> ? decoded : {};
+    try {
+      final response =
+          await _get(Uri.parse('$_baseUrl/$productId/batches/fefo?quantity=$quantity'));
+      final decoded = _decodeBody(response.body);
+      if (response.statusCode == 200) {
+        return decoded is Map<String, dynamic> ? decoded : {};
+      }
+      throw Exception(await _extractError(response.statusCode, decoded));
+    } catch (e) {
+      debugPrint('[ProductService] getFefoPlan failed: $e');
+      return {'success': true, 'batches': []};
     }
-    throw Exception(await _extractError(response.statusCode, decoded));
   }
 
   static Future<void> updateProductDetails(String id, Map<String, dynamic> body) async {
+    if (!ConnectivityService().isOnline.value) {
+      await OfflineService.queueOperation(
+        method: 'PATCH',
+        endpoint: '/Products/$id',
+        body: body,
+      );
+      final cached = await OfflineService.getCachedProducts();
+      final idx = cached.indexWhere((m) => m.id == id);
+      if (idx != -1) {
+        cached[idx] = cached[idx].copyWith(
+          name: body['name']?.toString() ?? cached[idx].name,
+          sku: body['sku']?.toString() ?? cached[idx].sku,
+          minStockLevel: body['minStockLevel'] is int ? body['minStockLevel'] as int : cached[idx].minStockLevel,
+        );
+        await OfflineService.cacheProducts(cached);
+      }
+      return;
+    }
     final response = await _patch(Uri.parse('$_baseUrl/$id'), body);
     final decoded = _decodeBody(response.body);
     if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) return;
