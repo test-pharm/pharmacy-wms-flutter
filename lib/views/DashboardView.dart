@@ -328,24 +328,24 @@ class _DashboardPageState extends State<DashboardPage> {
               ActionChip(
                 avatar: const Icon(Icons.add_box, size: 18),
                 label: Text(tr.receiveStock),
-                onPressed: () => widget.onNavigate?.call(4), // Inventory -> Add
+                onPressed: () => widget.onNavigate?.call(4), // Manager: 4 is Operations (Orders/Add)
               ),
             if (!AuthService.isSupervisor)
               ActionChip(
                 avatar: const Icon(Icons.local_shipping, size: 18),
                 label: Text(tr.dispatch),
-                onPressed: () => widget.onNavigate?.call(4), // Inventory -> Dispatch
+                onPressed: () => widget.onNavigate?.call(4), // Manager: 4 is Operations (Orders/Dispatch)
               ),
             ActionChip(
               avatar: const Icon(Icons.search, size: 18),
               label: Text(tr.quickSearch),
-              onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1), // Inventory List
+              onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1), // Manager: 1 is Inventory List
             ),
             if (!AuthService.isSupervisor)
               ActionChip(
                 avatar: const Icon(Icons.assignment_turned_in, size: 18),
                 label: Text(tr.performStocktake),
-                onPressed: () => widget.onNavigate?.call(2), // Stocktake Page
+                onPressed: () => widget.onNavigate?.call(2), // Manager: 2 is Stocktake Page
               ),
           ],
         ),
