@@ -91,7 +91,6 @@ class _DashboardPageState extends State<DashboardPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 3,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -201,59 +200,55 @@ class _DashboardPageState extends State<DashboardPage> {
                           ],
                         ),
                         const SizedBox(height: 18),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              InkWell(
-                                onTap: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1),
-                                child: _kpiCard(
-                                  context,
-                                  tr.totalMaterials,
-                                  provider.totalProducts.toString(),
-                                  icon: Icons.grid_view,
-                                ),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            InkWell(
+                              onTap: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1),
+                              child: _kpiCard(
+                                context,
+                                tr.totalMaterials,
+                                provider.totalProducts.toString(),
+                                icon: Icons.grid_view,
                               ),
-                              const SizedBox(width: 12),
-                              InkWell(
-                                onTap: () => widget.onNavigate?.call(AuthService.isSupervisor ? 2 : 3, reportsTab: 2),
-                                child: _kpiCard(
-                                  context,
-                                  tr.nearingExpiry,
-                                  expiringSoonCount.toString(),
-                                  icon: Icons.hourglass_bottom,
-                                  color: expiringSoonCount > 0 ? Colors.orange : null,
-                                ),
+                            ),
+                            InkWell(
+                              onTap: () => widget.onNavigate?.call(AuthService.isSupervisor ? 2 : 3, reportsTab: 2),
+                              child: _kpiCard(
+                                context,
+                                tr.nearingExpiry,
+                                expiringSoonCount.toString(),
+                                icon: Icons.hourglass_bottom,
+                                color: expiringSoonCount > 0 ? Colors.orange : null,
                               ),
-                              const SizedBox(width: 12),
-                              InkWell(
-                                onTap: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1, availabilityFilter: 'Low Stock'),
-                                child: _kpiCard(
-                                  context,
-                                  tr.lowStockItemsTitle,
-                                  lowStockCount.toString(),
-                                  icon: Icons.warning_amber_rounded,
-                                  color: lowStockCount > 0 ? Colors.yellow[700] : null,
-                                ),
+                            ),
+                            InkWell(
+                              onTap: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1, availabilityFilter: 'Low Stock'),
+                              child: _kpiCard(
+                                context,
+                                tr.lowStockItemsTitle,
+                                lowStockCount.toString(),
+                                icon: Icons.warning_amber_rounded,
+                                color: lowStockCount > 0 ? Colors.yellow[700] : null,
                               ),
-                              const SizedBox(width: 12),
-                              InkWell(
-                                onTap: _showNotifications,
-                                child: _kpiCard(
-                                  context,
-                                  tr.criticalAlertsTitle,
-                                  criticalAlertsCount.toString(),
-                                  icon: Icons.notifications_active,
-                                  color: criticalAlertsCount > 0 ? Colors.red : null,
-                                ),
+                            ),
+                            InkWell(
+                              onTap: _showNotifications,
+                              child: _kpiCard(
+                                context,
+                                tr.criticalAlertsTitle,
+                                criticalAlertsCount.toString(),
+                                icon: Icons.notifications_active,
+                                color: criticalAlertsCount > 0 ? Colors.red : null,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         Container(
-                          height: 240,
-                          padding: const EdgeInsets.all(16),
+                          height: 280,
+                          padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             color: Theme.of(context).cardColor,
@@ -261,13 +256,19 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: Row(
                             children: [
                               Expanded(
+                                flex: 2,
                                 child: _buildCategoryChart(context, provider.products),
                               ),
-                              const SizedBox(width: 12),
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _chartLegend(context),
+                              const SizedBox(width: 24),
+                              Expanded(
+                                flex: 3,
+                                child: SingleChildScrollView(
+                                  child: Wrap(
+                                    spacing: 16,
+                                    runSpacing: 8,
+                                    children: _chartLegend(context),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -318,90 +319,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        InkWell(
-                          onTap: () => setState(() => _alertsCollapsed = !_alertsCollapsed),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Text(
-                                  tr.criticalAlertsTitle,
-                                  style: const TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                                const Spacer(),
-                                if (criticalAlertsCount > 0)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      criticalAlertsCount.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                const SizedBox(width: 8),
-                                AnimatedRotation(
-                                  turns: _alertsCollapsed ? -0.25 : 0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: const Icon(Icons.expand_more, size: 20),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 250),
-                          child: _alertsCollapsed
-                              ? const SizedBox(width: double.infinity)
-                              : Column(
-                                  children: [
-                                    if (criticalAlerts.isEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(12),
-                                          color: Theme.of(context).cardColor,
-                                        ),
-                                        child: Center(
-                                          child: Text(tr.noCriticalAlerts),
-                                        ),
-                                      )
-                                    else
-                                      ...criticalAlerts.take(5).map((alert) {
-                                        final isExpired = alert.alertType == 'expired';
-                                        return Padding(
-                                          padding: const EdgeInsets.only(bottom: 10),
-                                          child: _alertCard(
-                                            context,
-                                            alert.material?.name ?? 'Alert',
-                                            alert.message,
-                                            isExpired
-                                                ? Icons.error_outline
-                                                : Icons.warning_amber_rounded,
-                                            isExpired ? Colors.redAccent : Colors.orangeAccent,
-                                          ),
-                                        );
-                                      }),
-                                  ],
-                                ),
                         ),
                       ],
                     ),
