@@ -644,8 +644,8 @@ context.tr.error
       final sheet = excel['Reports'];
       final headerStyle = CellStyle(
         bold: true,
-        backgroundColorHex: '#0D6EFD',
-        fontColorHex: '#FFFFFF',
+        backgroundColorHex: ExcelColor.fromHexString('#0D6EFD'),
+        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
       );
       final headers = [
         context.tr.name,
@@ -674,8 +674,8 @@ context.tr.error
       
       statusColors.forEach((status, color) {
         statusStyles[status] = CellStyle(
-          fontColorHex: '#$color',
-          backgroundColorHex: '#${color}20', // Using 2 digit hex for transparency if supported, but let's be safer
+          fontColorHex: ExcelColor.fromHexString('#$color'),
+          backgroundColorHex: ExcelColor.fromHexString('#${color}20'), // Using 2 digit hex for transparency if supported, but let's be safer
         );
       });
 
@@ -690,8 +690,8 @@ context.tr.error
 
       for (final status in statusColors.keys) {
         statusStyles[status] = CellStyle(
-          fontColorHex: '#${statusColors[status]}',
-          backgroundColorHex: '#${lightStatusColors[status]}',
+          fontColorHex: ExcelColor.fromHexString('#${statusColors[status]}'),
+          backgroundColorHex: ExcelColor.fromHexString('#${lightStatusColors[status]}'),
         );
       }
 
@@ -728,7 +728,7 @@ context.tr.error
       
       final sumStyle = CellStyle(
         bold: true,
-        backgroundColorHex: '#F0F0F0',
+        backgroundColorHex: ExcelColor.fromHexString('#F0F0F0'),
       );
       
       final sumRowIdx = sheet.maxRows - 1;
