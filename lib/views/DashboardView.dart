@@ -417,28 +417,34 @@ class _DashboardPageState extends State<DashboardPage> {
                 if (healthyPct > 0)
                   Expanded(
                     flex: (healthyPct * 100).toInt(),
-                    child: Container(
-                      height: 12,
-                      color: Colors.green,
-                      tooltip: '${tr.healthy} (${(healthyPct * 100).toStringAsFixed(0)}%)',
+                    child: Tooltip(
+                      message: '${tr.healthy} (${(healthyPct * 100).toStringAsFixed(0)}%)',
+                      child: Container(
+                        height: 12,
+                        color: Colors.green,
+                      ),
                     ),
                   ),
                 if (lowPct > 0)
                   Expanded(
                     flex: (lowPct * 100).toInt(),
-                    child: Container(
-                      height: 12,
-                      color: Colors.orange,
-                      tooltip: '${tr.lowStock} (${(lowPct * 100).toStringAsFixed(0)}%)',
+                    child: Tooltip(
+                      message: '${tr.lowStock} (${(lowPct * 100).toStringAsFixed(0)}%)',
+                      child: Container(
+                        height: 12,
+                        color: Colors.orange,
+                      ),
                     ),
                   ),
                 if (expiredPct > 0)
                   Expanded(
                     flex: (expiredPct * 100).toInt(),
-                    child: Container(
-                      height: 12,
-                      color: Colors.red,
-                      tooltip: '${tr.outOfStockStatus} (${(expiredPct * 100).toStringAsFixed(0)}%)',
+                    child: Tooltip(
+                      message: '${tr.outOfStockStatus} (${(expiredPct * 100).toStringAsFixed(0)}%)',
+                      child: Container(
+                        height: 12,
+                        color: Colors.red,
+                      ),
                     ),
                   ),
               ],
