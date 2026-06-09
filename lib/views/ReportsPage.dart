@@ -644,8 +644,8 @@ context.tr.error
       final sheet = excel['Reports'];
       final headerStyle = CellStyle(
         bold: true,
-        backgroundColorHex: '#0D6EFD',
-        fontColorHex: '#FFFFFF',
+        backgroundColorHex: ExcelColor.fromInt(0xFF0D6EFD),
+        fontColorHex: ExcelColor.fromInt(0xFFFFFFFF),
       );
       final headers = [
         context.tr.name,
@@ -663,40 +663,15 @@ context.tr.error
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
       }
 
-      // Pre-create status styles to avoid style bloat/corruption
-      final statusStyles = <String, CellStyle>{};
       final statusColors = <String, String>{
         'Good': '28A745',
         'Expiring Soon': 'FFA500',
         'Expired': 'DC3545',
         'Low Stock': 'FF8C00',
       };
-      
-      statusColors.forEach((status, color) {
-        statusStyles[status] = CellStyle(
-          fontColorHex: '#$color',
-          backgroundColorHex: '#${color}20', // Using 2 digit hex for transparency if supported, but let's be safer
-        );
-      });
-
-      // Actually, for maximum compatibility with Excel readers, let's avoid alpha in background hex strings if they cause issues.
-      // But '#RRGGBBAA' is sometimes supported. Let's try solid light colors instead for background.
-      final lightStatusColors = <String, String>{
-        'Good': 'D4EDDA',
-        'Expiring Soon': 'FFF3CD',
-        'Expired': 'F8D7DA',
-        'Low Stock': 'FFE5D0',
-      };
-
-      for (final status in statusColors.keys) {
-        statusStyles[status] = CellStyle(
-          fontColorHex: '#${statusColors[status]}',
-          backgroundColorHex: '#${lightStatusColors[status]}',
-        );
-      }
-
       for (final m in filtered) {
         final status = MaterialService.getMaterialStatus(m);
+        final colorHex = statusColors[status] ?? '000000';
         final rowIdx = sheet.maxRows;
         sheet.appendRow([
           TextCellValue(m.name),
@@ -708,10 +683,12 @@ context.tr.error
           TextCellValue(status),
           TextCellValue(m.supplier.isEmpty ? '-' : m.supplier),
         ]);
-        
-        if (statusStyles.containsKey(status)) {
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIdx)).cellStyle = statusStyles[status];
-        }
+        final fg = ExcelColor.fromInt(int.parse(colorHex, radix: 16) | 0xFF000000);
+        final bg = ExcelColor.fromInt((int.parse(colorHex, radix: 16) & 0xFFFFFF) | 0x20000000);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIdx)).cellStyle = CellStyle(
+          fontColorHex: fg,
+          backgroundColorHex: bg,
+        );
       }
       _autoWidth(sheet, headers.length, filtered);
       final totalQty = filtered.fold<int>(0, (s, m) => s + m.quantity);
@@ -725,15 +702,12 @@ context.tr.error
         TextCellValue(context.tr.total),
         TextCellValue(totalQty.toString()),
       ]);
-      
-      final sumStyle = CellStyle(
-        bold: true,
-        backgroundColorHex: '#F0F0F0',
-      );
-      
       final sumRowIdx = sheet.maxRows - 1;
       for (int i = 0; i < 8; i++) {
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: sumRowIdx)).cellStyle = sumStyle;
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: sumRowIdx)).cellStyle = CellStyle(
+          bold: true,
+          backgroundColorHex: ExcelColor.fromInt(0xFFF0F0F0),
+        );
       }
 
       final bytes = excel.encode();
