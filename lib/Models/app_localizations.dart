@@ -486,4 +486,16 @@ count == 1 ? '' : 's'
   String get stockHealthHealthy => isArabic ? 'المخزون في حالة جيدة' : 'Inventory is in good health';
   String get stockHealthWarning => isArabic ? 'انتبه: يوجد نقص في بعض الأصناف' : 'Attention: Some items are low in stock';
   String get stockHealthCritical => isArabic ? 'حرج: أصناف كثيرة نفدت أو انتهت' : 'Critical: Many items out of stock or expired';
+
+  // === Operational Dashboard ===
+  String get pendingApprovalsTitle => isArabic ? 'بانتظار الموافقة' : 'Pending Approvals';
+  String get criticalShortages => isArabic ? 'نقص حاد في المخزون' : 'Critical Shortages';
+  String get actionRequired => isArabic ? 'إجراء مطلوب' : 'Action Required';
+  String get receivedToday => isArabic ? 'تم استلامه اليوم' : 'Received Today';
+  String get dispatchedToday => isArabic ? 'تم صرفه اليوم' : 'Dispatched Today';
+  String get viewAllApprovals => isArabic ? 'عرض جميع الموافقات' : 'View All Approvals';
+  String get urgentActionDesc => isArabic ? 'أصناف تتطلب تدخلاً فورياً' : 'Items requiring immediate attention';
+  String get systemFeed => isArabic ? 'سجل النظام المباشر' : 'System Feed';
+  String get incomingStock => isArabic ? 'مخزون وارد' : 'Incoming Stock';
+  String get outgoingStock => isArabic ? 'مخزون صادر' : 'Outgoing Stock';
 }

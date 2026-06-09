@@ -272,41 +272,273 @@ class _DashboardPageState extends State<DashboardPage> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          height: 280,
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Theme.of(context).cardColor,
-                          ),
-                          child: Row(
-                            children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (AuthService.isWarehouseManager) ...[
                               Expanded(
                                 flex: 2,
-                                child: _buildCategoryChart(context, provider.products),
+                                child: _buildPendingApprovals(context),
                               ),
                               const SizedBox(width: 24),
-                              Expanded(
-                                flex: 3,
-                                child: SingleChildScrollView(
-                                  child: Wrap(
-                                    spacing: 16,
-                                    runSpacing: 8,
-                                    children: _chartLegend(context),
-                                  ),
-                                ),
-                              ),
                             ],
-                          ),
+                            Expanded(
+                              flex: 3,
+                              child: _buildCriticalShortages(context, provider),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        _buildActivityFeed(context, provider),
+                        const SizedBox(height: 24),
+                        _buildSystemFeed(context),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildPendingApprovals(BuildContext context) {
+    final tr = context.tr;
+    final pendingCount = NotificationService.getAll().where((n) => n.title.contains('Expiry Change')).length;
+    // For demo purposes, we'll link this directly to the notifications since we don't have a direct approvals API hooked up in the dashboard yet.
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.assignment_ind, color: Colors.blue[700]),
+              const SizedBox(width: 8),
+              Text(
+                tr.pendingApprovalsTitle,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              if (pendingCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+                  child: Text(
+                    pendingCount.toString(),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (pendingCount == 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(tr.noPendingApprovals, style: TextStyle(color: Colors.grey[500])),
+              ),
+            )
+          else
+            Column(
+              children: [
+                ...NotificationService.getAll()
+                    .where((n) => n.title.contains('Expiry Change') && !n.isRead)
+                    .take(3)
+                    .map((n) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(n.materialName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text('Requested: ${_formatTimeOnly(n.createdAt)}'),
+                          trailing: ElevatedButton(
+                            onPressed: () {
+                              widget.onNavigate?.call(3, reportsTab: 1); // Go to approvals
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
+                            child: Text(tr.viewDetailsTooltip),
+                          ),
+                        )),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => widget.onNavigate?.call(3, reportsTab: 1),
+                  child: Text(tr.viewAllApprovals),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCriticalShortages(BuildContext context, ProductProvider provider) {
+    final tr = context.tr;
+    final criticalItems = provider.products.where((p) {
+      final isExpired = p.batches.any((b) => b.isExpired);
+      final isSeverelyLow = p.quantity < (p.minStockLevel > 0 ? p.minStockLevel / 2 : 5);
+      return isExpired || isSeverelyLow;
+    }).take(5).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.report_problem, color: Colors.red),
+              const SizedBox(width: 8),
+              Text(
+                tr.criticalShortages,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            tr.urgentActionDesc,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          if (criticalItems.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(tr.noData, style: TextStyle(color: Colors.grey[500])),
+              ),
+            )
+          else
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(3),
+                1: IntrinsicColumnWidth(),
+                2: IntrinsicColumnWidth(),
+              },
+              children: [
+                TableRow(
+                  children: [
+                    Text(tr.materialName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Text(tr.issue, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    ),
+                    const SizedBox.shrink(), // Action column
+                  ],
+                ),
+                for (final item in criticalItems)
+                  TableRow(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, top: 12, bottom: 12),
+                        child: Text(
+                          item.batches.any((b) => b.isExpired) ? tr.statusExpired : tr.lowStock,
+                          style: TextStyle(
+                            color: item.batches.any((b) => b.isExpired) ? Colors.red : Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1),
+                            child: Text(item.batches.any((b) => b.isExpired) ? tr.disposeAction : tr.receiveStock),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSystemFeed(BuildContext context) {
+    final tr = context.tr;
+    // In a real app, this would fetch from AuditLogService.
+    // For now, we simulate a rich feed using recent notifications and alerts to show layout.
+    final alerts = AlertService.getCriticalAlerts().take(3).toList();
+    final notifs = NotificationService.getAll().take(2).toList();
+    final combined = [...alerts, ...notifs];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Theme.of(context).cardColor,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.list_alt, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text(
+                tr.systemFeed,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (combined.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(tr.noData, style: TextStyle(color: Colors.grey[500])),
+              ),
+            )
+          else
+            ...combined.map((item) {
+              IconData icon;
+              Color iconColor;
+              String title;
+              String timeStr;
+
+              if (item is AlertModel) {
+                icon = Icons.warning_amber_rounded;
+                iconColor = Colors.orange;
+                title = 'Alert: ${item.message}';
+                timeStr = _formatTimeOnly(DateTime.now().subtract(const Duration(minutes: 15))); // Mock time
+              } else if (item is NotificationModel) {
+                icon = Icons.info_outline;
+                iconColor = Colors.blue;
+                title = 'System: ${item.title}';
+                timeStr = _formatTimeOnly(item.createdAt);
+              } else {
+                return const SizedBox.shrink();
+              }
+
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: iconColor.withOpacity(0.1),
+                  child: Icon(icon, color: iconColor, size: 20),
+                ),
+                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              );
+            }),
+        ],
+      ),
     );
   }
 
