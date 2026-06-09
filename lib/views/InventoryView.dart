@@ -505,7 +505,7 @@ class _InventoryPageState extends State<InventoryPage> {
       children: [
         if (hasExpired)
           IconButton(
-            tooltip: tr.disposeExpiredUnitsTitle,
+            tooltip: context.tr.disposeExpiredUnitsTitle,
             onPressed: () => _confirmDisposeExpired(context, provider, product),
             icon: const Icon(Icons.delete_sweep_outlined),
             color: Colors.red,
