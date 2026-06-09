@@ -471,4 +471,19 @@ count == 1 ? '' : 's'
   String get contactType => isArabic ? 'النوع' : 'Contact Type';
   String get supplierLabel => isArabic ? 'مورد' : 'Supplier';
   String get recipientLabel => isArabic ? 'مستلم' : 'Recipient';
+
+  // === Dashboard Refinement ===
+  String get quickActions => isArabic ? 'إجراءات سريعة' : 'Quick Actions';
+  String get stockHealth => isArabic ? 'حالة المخزون' : 'Stock Health';
+  String get activityFeed => isArabic ? 'سجل النشاط' : 'Activity Feed';
+  String get receiveStock => isArabic ? 'استلام مخزون' : 'Receive Stock';
+  String get dispatch => isArabic ? 'صرف' : 'Dispatch';
+  String get quickSearch => isArabic ? 'بحث سريع' : 'Quick Search';
+  String get performStocktake => isArabic ? 'إجراء جرد' : 'Perform Stocktake';
+  String get healthy => isArabic ? 'سليم' : 'Healthy';
+  String get lowStock => isArabic ? 'مخزون منخفض' : 'Low Stock';
+  String get outOfStockStatus => isArabic ? 'نفذ المخزون' : 'Out of Stock';
+  String get stockHealthHealthy => isArabic ? 'المخزون في حالة جيدة' : 'Inventory is in good health';
+  String get stockHealthWarning => isArabic ? 'انتبه: يوجد نقص في بعض الأصناف' : 'Attention: Some items are low in stock';
+  String get stockHealthCritical => isArabic ? 'حرج: أصناف كثيرة نفدت أو انتهت' : 'Critical: Many items out of stock or expired';
 }

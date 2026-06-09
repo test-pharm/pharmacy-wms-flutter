@@ -21,18 +21,20 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   Timer? _refreshTimer;
+  Timer? _clockTimer;
   bool _alertsCollapsed = false;
   DateTime _lastSyncedTime = DateTime.now();
+  DateTime _currentTime = DateTime.now();
 
   String _getTimeOfDayGreeting() {
-    final hour = DateTime.now().hour;
+    final hour = _currentTime.hour;
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   }
 
   IconData _getTimeOfDayIcon() {
-    final hour = DateTime.now().hour;
+    final hour = _currentTime.hour;
     if (hour < 12) return Icons.light_mode;
     if (hour < 17) return Icons.wb_twilight;
     return Icons.dark_mode;
@@ -45,6 +47,12 @@ class _DashboardPageState extends State<DashboardPage> {
     return '$h:$m:$s';
   }
 
+  String _formatFullDateTime(DateTime time) {
+    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${days[time.weekday % 7]}, ${months[time.month - 1]} ${time.day} ${time.year}';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -54,12 +62,16 @@ class _DashboardPageState extends State<DashboardPage> {
       provider.loadProducts();
       if (mounted) setState(() => _lastSyncedTime = DateTime.now());
     });
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _currentTime = DateTime.now());
+    });
   }
 
   @override
   void dispose() {
     NotificationService.changes.removeListener(_handleNotificationChange);
     _refreshTimer?.cancel();
+    _clockTimer?.cancel();
     super.dispose();
   }
 
@@ -156,24 +168,24 @@ class _DashboardPageState extends State<DashboardPage> {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(_getTimeOfDayIcon(), color: Colors.amber, size: 22),
+                                      Icon(_getTimeOfDayIcon(), color: Colors.amber, size: 26),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '${_getTimeOfDayGreeting()}, ${AuthService.currentUser?.fullName ?? "Guest"}',
+                                        '${_getTimeOfDayGreeting()}, ${AuthService.currentUser?.fullName.split(' ').first ?? "Guest"}',
                                         style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                                         ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    tr.warehouseOverview,
-                                    style: const TextStyle(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w700,
+                                    _formatFullDateTime(_currentTime),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54,
                                     ),
                                   ),
                                 ],
@@ -189,8 +201,17 @@ class _DashboardPageState extends State<DashboardPage> {
                                   },
                                   icon: const Icon(Icons.refresh),
                                   label: Text(tr.refresh),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Theme.of(context).cardColor,
+                                    foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side: BorderSide(color: Theme.of(context).dividerColor),
+                                    ),
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Text(
                                   'Last synced: ${_formatTimeOnly(_lastSyncedTime)}',
                                   style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -199,10 +220,14 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 24),
+                        _buildQuickActions(context),
+                        const SizedBox(height: 24),
+                        _buildStockHealth(context, provider),
+                        const SizedBox(height: 24),
                         Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
+                          spacing: 16,
+                          runSpacing: 16,
                           children: [
                             InkWell(
                               onTap: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1),
@@ -211,6 +236,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 tr.totalMaterials,
                                 provider.totalProducts.toString(),
                                 icon: Icons.grid_view,
+                                color: Colors.blue,
                               ),
                             ),
                             InkWell(
@@ -220,7 +246,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 tr.nearingExpiry,
                                 expiringSoonCount.toString(),
                                 icon: Icons.hourglass_bottom,
-                                color: expiringSoonCount > 0 ? Colors.orange : null,
+                                color: Colors.orange,
                               ),
                             ),
                             InkWell(
@@ -230,7 +256,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 tr.lowStockItemsTitle,
                                 lowStockCount.toString(),
                                 icon: Icons.warning_amber_rounded,
-                                color: lowStockCount > 0 ? Colors.yellow[700] : null,
+                                color: Colors.amber[700],
                               ),
                             ),
                             InkWell(
@@ -240,7 +266,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 tr.criticalAlertsTitle,
                                 criticalAlertsCount.toString(),
                                 icon: Icons.notifications_active,
-                                color: criticalAlertsCount > 0 ? Colors.red : null,
+                                color: Colors.red,
                               ),
                             ),
                           ],
@@ -274,58 +300,216 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Theme.of(context).cardColor,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                tr.recentMaterials,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 12),
-                              if (recentMaterials.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(
-                                    child: Text(
-                                      tr.noData,
-                                      style: TextStyle(
-                                        color: Theme.of(context).brightness == Brightness.dark
-                                            ? Colors.white38
-                                            : Colors.black26,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                ...recentMaterials.map(
-                                  (m) => Column(
-                                    children: [
-                                      _materialRow(
-                                        m.name,
-                                        '${m.quantity} ${tr.unit.toLowerCase()}',
-                                        m.expiryDate,
-                                        m.category,
-                                      ),
-                                      const Divider(),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                        _buildActivityFeed(context, provider),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    final tr = context.tr;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tr.quickActions,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            if (!AuthService.isSupervisor)
+              ActionChip(
+                avatar: const Icon(Icons.add_box, size: 18),
+                label: Text(tr.receiveStock),
+                onPressed: () => widget.onNavigate?.call(4), // Inventory -> Add
+              ),
+            if (!AuthService.isSupervisor)
+              ActionChip(
+                avatar: const Icon(Icons.local_shipping, size: 18),
+                label: Text(tr.dispatch),
+                onPressed: () => widget.onNavigate?.call(4), // Inventory -> Dispatch
+              ),
+            ActionChip(
+              avatar: const Icon(Icons.search, size: 18),
+              label: Text(tr.quickSearch),
+              onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1), // Inventory List
+            ),
+            if (!AuthService.isSupervisor)
+              ActionChip(
+                avatar: const Icon(Icons.assignment_turned_in, size: 18),
+                label: Text(tr.performStocktake),
+                onPressed: () => widget.onNavigate?.call(2), // Stocktake Page
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStockHealth(BuildContext context, ProductProvider provider) {
+    final tr = context.tr;
+    final total = provider.totalProducts;
+    if (total == 0) return const SizedBox.shrink();
+
+    final lowStock = provider.lowStockCount;
+    final expired = provider.expiredCount;
+    final healthy = total - lowStock - expired;
+
+    final double healthyPct = (healthy / total).clamp(0.0, 1.0);
+    final double lowPct = (lowStock / total).clamp(0.0, 1.0);
+    final double expiredPct = (expired / total).clamp(0.0, 1.0);
+
+    String healthStatus;
+    Color healthColor;
+    IconData healthIcon;
+
+    if (healthyPct > 0.8) {
+      healthStatus = tr.stockHealthHealthy;
+      healthColor = Colors.green;
+      healthIcon = Icons.check_circle_outline;
+    } else if (lowPct > 0.3) {
+      healthStatus = tr.stockHealthWarning;
+      healthColor = Colors.orange;
+      healthIcon = Icons.warning_amber_rounded;
+    } else {
+      healthStatus = tr.stockHealthCritical;
+      healthColor = Colors.red;
+      healthIcon = Icons.error_outline;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                tr.stockHealth,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Icon(healthIcon, color: healthColor, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                healthStatus,
+                style: TextStyle(color: healthColor, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                if (healthyPct > 0)
+                  Expanded(
+                    flex: (healthyPct * 100).toInt(),
+                    child: Container(
+                      height: 12,
+                      color: Colors.green,
+                      tooltip: '${tr.healthy} (${(healthyPct * 100).toStringAsFixed(0)}%)',
+                    ),
+                  ),
+                if (lowPct > 0)
+                  Expanded(
+                    flex: (lowPct * 100).toInt(),
+                    child: Container(
+                      height: 12,
+                      color: Colors.orange,
+                      tooltip: '${tr.lowStock} (${(lowPct * 100).toStringAsFixed(0)}%)',
+                    ),
+                  ),
+                if (expiredPct > 0)
+                  Expanded(
+                    flex: (expiredPct * 100).toInt(),
+                    child: Container(
+                      height: 12,
+                      color: Colors.red,
+                      tooltip: '${tr.outOfStockStatus} (${(expiredPct * 100).toStringAsFixed(0)}%)',
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityFeed(BuildContext context, ProductProvider provider) {
+    final tr = context.tr;
+    final recentMaterials = _recentMaterials(provider.products);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Theme.of(context).cardColor,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr.activityFeed,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          if (recentMaterials.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  tr.noData,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white38
+                        : Colors.black26,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...recentMaterials.map((m) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: Colors.blue.withOpacity(0.1),
+                  child: const Icon(Icons.add_circle_outline, color: Colors.blue),
+                ),
+                title: Text(
+                  'Added ${m.name} (${m.sku})',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Quantity: ${m.quantity} ${tr.unit.toLowerCase()} | ${tr.category}: ${m.category.isEmpty ? tr.uncategorizedLabel : m.category}',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white60
+                        : Colors.black54,
+                  ),
+                ),
+                trailing: Text(
+                  _formatTimeOnly(m.createdAt),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
