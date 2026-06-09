@@ -499,28 +499,61 @@ class _InventoryPageState extends State<InventoryPage> {
         icon: const Icon(Icons.visibility_outlined),
       );
     }
+    final hasExpired = product.batches.any((b) => b.isExpired);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (product.isFullyExpired)
+        if (hasExpired)
           IconButton(
-            tooltip: context.tr.recordDisposal,
-            onPressed: () => _openDisposalDialog(context, provider, product),
+            tooltip: 'Dispose Expired Units',
+            onPressed: () => _confirmDisposeExpired(context, provider, product),
             icon: const Icon(Icons.delete_sweep_outlined),
-            color: Colors.orange,
+            color: Colors.red,
           ),
         IconButton(
           tooltip: context.tr.editProduct,
           onPressed: () => _openProductDialog(context, provider, existingProduct: product),
           icon: const Icon(Icons.edit_outlined),
         ),
-        IconButton(
-          tooltip: context.tr.deleteProductTooltip,
-          onPressed: () => _confirmDelete(context, provider, product),
-          icon: const Icon(Icons.delete_outline),
-          color: Colors.red,
-        ),
       ],
+    );
+  }
+
+  Future<void> _confirmDisposeExpired(
+    BuildContext context,
+    ProductProvider provider,
+    MaterialModel product,
+  ) async {
+    final tr = context.tr;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Dispose Expired Units'),
+        content: Text('Are you sure you want to remove all expired units for ${product.name}? This action only removes expired batches and cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(tr.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Dispose', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    
+    final error = await provider.disposeExpired(product.id);
+    if (!context.mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(error ?? 'Expired units disposed successfully.'),
+        backgroundColor: error == null ? Colors.green : Colors.red,
+      ),
     );
   }
 

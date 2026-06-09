@@ -123,16 +123,24 @@ class ProductProvider extends ChangeNotifier {
       final error = await ProductService.deleteProduct(id);
       if (error != null) {
         return error;
-      
-}
+      }
       await _refreshProductsAfterMutation();
       return null;
-    
-} catch (e) {
+    } catch (e) {
       return _handleMutationError(e);
-    
-}  
-}  MaterialModel? findBySku(String sku) {
+    }
+  }
+
+  Future<String?> disposeExpired(String id) async {
+    try {
+      final error = await ProductService.disposeExpired(id);
+      if (error != null) return error;
+      await _refreshProductsAfterMutation();
+      return null;
+    } catch (e) {
+      return _handleMutationError(e);
+    }
+  }  MaterialModel? findBySku(String sku) {
     try {
       return _products.firstWhere(        (product) => product.sku.toLowerCase() == sku.toLowerCase(),      );
     

@@ -155,6 +155,20 @@ class ProductService {
     }
   }
 
+  static Future<String?> disposeExpired(String id) async {
+    if (!ConnectivityService().isOnline.value) {
+      return 'Disposal is only available online.';
+    }
+    try {
+      final response = await _post(Uri.parse('$_baseUrl/$id/dispose-expired'), {});
+      final decoded = _decodeBody(response.body);
+      if (response.statusCode == 200) return null;
+      return await _extractError(response.statusCode, decoded);
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getBatches(String productId) async {
     try {
       final response = await _get(Uri.parse('$_baseUrl/$productId/batches'));
