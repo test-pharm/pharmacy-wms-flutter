@@ -60,7 +60,10 @@ class ProductProvider extends ChangeNotifier {
   
 }).length;
   int getCriticalAlertsCount() => expiredCount + expiringSoonCount;
-  int get lowStockCount =>      _products.where((product) => product.quantity < _lowStockThreshold).length;
+  int get lowStockCount => _products.where((product) {
+        final threshold = product.minStockLevel > 0 ? product.minStockLevel : _lowStockThreshold;
+        return product.quantity < threshold;
+      }).length;
   Future<void> loadProducts() async {
     if (!AuthService.isAuthenticated) {
       clear(notify: true);

@@ -1052,7 +1052,7 @@ class _InventoryPageState extends State<InventoryPage> {
     final matchesAvailability = switch (_availabilityFilter) {
       'Available' => product.isAvailable,
       'Unavailable' => !product.isAvailable,
-      'Low Stock' => product.quantity < (product.minStockLevel > 0 ? product.minStockLevel : 20),
+      'Low Stock' => product.quantity < (product.minStockLevel > 0 ? product.minStockLevel : 100),
       _ => true,
     };
     final matchesCategory = _categoryFilter.isEmpty || product.category == _categoryFilter;
