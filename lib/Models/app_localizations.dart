@@ -127,6 +127,7 @@ count == 1 ? '' : 's'
   String get addMaterial => isArabic ? 'إضافة مادة' : 'Add Material';
   String get exportMaterial => isArabic ? 'صرف مادة' : 'Dispatch Material';
   String get materialName => isArabic ? 'اسم المادة' : 'Material Name';
+  String get issue => isArabic ? 'المشكلة' : 'Issue';
   String get materialSku => isArabic ? 'رمز المادة (SKU)' : 'Material SKU';
   String get quantity => isArabic ? 'الكمية' : 'Quantity';
   String get unit => isArabic ? 'الوحدة' : 'Unit';

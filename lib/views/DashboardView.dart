@@ -5,6 +5,7 @@ import 'package:pharmacy_wms/Models/ProductProvider.dart';
 import 'package:pharmacy_wms/Models/UserRoleModel.dart';
 import 'package:pharmacy_wms/Models/app_localizations.dart';
 import 'package:pharmacy_wms/Models/materialModel.dart';
+import 'package:pharmacy_wms/Models/alertModel.dart';
 import 'package:pharmacy_wms/Services/notificationService.dart';
 import 'package:pharmacy_wms/Services/alertService.dart';
 import 'package:pharmacy_wms/views/UserInfo.dart';
@@ -518,7 +519,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 iconColor = Colors.orange;
                 title = 'Alert: ${item.message}';
                 timeStr = _formatTimeOnly(DateTime.now().subtract(const Duration(minutes: 15))); // Mock time
-              } else if (item is NotificationModel) {
+              } else if (item is AppNotification) {
                 icon = Icons.info_outline;
                 iconColor = Colors.blue;
                 title = 'System: ${item.title}';
