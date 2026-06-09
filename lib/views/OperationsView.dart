@@ -992,8 +992,8 @@ class _OperationsPageState extends State<OperationsPage> {
       final sheet = excel['Operations Log'];
       final headerStyle = CellStyle(
         bold: true,
-        backgroundColorHex: ExcelColor.fromHexString('#0D6EFD'),
-        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+        backgroundColorHex: '#0D6EFD',
+        fontColorHex: '#FFFFFF',
       );
       final headers = [
         tr.orderId,

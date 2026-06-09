@@ -357,8 +357,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
       final sheet = excel['Audit Log'];
       final headerStyle = CellStyle(
         bold: true,
-        backgroundColorHex: ExcelColor.fromHexString('#0D6EFD'),
-        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+        backgroundColorHex: '#0D6EFD',
+        fontColorHex: '#FFFFFF',
       );
 
       final headers = [
