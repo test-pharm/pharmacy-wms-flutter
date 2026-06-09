@@ -299,7 +299,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildPendingApprovals(BuildContext context) {
     final tr = context.tr;
-    final pendingCount = 0; // Force to 0 to hide requests
+    final pendingRequests = NotificationService.getAll()
+        .where((n) => n.title.contains('Expiry Change') && !n.isRead)
+        .toList();
+    final pendingCount = pendingRequests.length;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -320,15 +323,50 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
+              if (pendingCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+                  child: Text(
+                    pendingCount.toString(),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Center(
-              child: Text(tr.noPendingApprovals, style: TextStyle(color: Colors.grey[500])),
+          if (pendingCount == 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(tr.noPendingApprovals, style: TextStyle(color: Colors.grey[500])),
+              ),
+            )
+          else
+            Column(
+              children: [
+                ...pendingRequests.take(3).map((n) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(n.materialName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('Requested: ${_formatTimeOnly(n.createdAt)}'),
+                      trailing: ElevatedButton(
+                        onPressed: () {
+                          widget.onNavigate?.call(3, reportsTab: 1); // Go to approvals
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: Text(tr.viewDetailsTooltip),
+                      ),
+                    )),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => widget.onNavigate?.call(3, reportsTab: 1),
+                  child: Text(tr.viewAllApprovals),
+                ),
+              ],
             ),
-          ),
         ],
       ),
     );
