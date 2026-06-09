@@ -505,7 +505,7 @@ class _InventoryPageState extends State<InventoryPage> {
       children: [
         if (hasExpired)
           IconButton(
-            tooltip: 'Dispose Expired Units',
+            tooltip: tr.disposeExpiredUnitsTitle,
             onPressed: () => _confirmDisposeExpired(context, provider, product),
             icon: const Icon(Icons.delete_sweep_outlined),
             color: Colors.red,
@@ -528,8 +528,8 @@ class _InventoryPageState extends State<InventoryPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Dispose Expired Units'),
-        content: Text('Are you sure you want to remove all expired units for ${product.name}? This action only removes expired batches and cannot be undone.'),
+        title: Text(tr.disposeExpiredUnitsTitle),
+        content: Text(tr.disposeConfirmMessage(product.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -538,7 +538,7 @@ class _InventoryPageState extends State<InventoryPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Dispose', style: TextStyle(color: Colors.white)),
+            child: Text(tr.disposeAction, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -551,7 +551,7 @@ class _InventoryPageState extends State<InventoryPage> {
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(error ?? 'Expired units disposed successfully.'),
+        content: Text(error ?? tr.disposalSuccess),
         backgroundColor: error == null ? Colors.green : Colors.red,
       ),
     );

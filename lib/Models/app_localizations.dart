@@ -450,6 +450,12 @@ count == 1 ? '' : 's'
   String get recordDisposal => isArabic ? 'تسجيل إتلاف' : 'Record Disposal';
   String get disposalMethod => isArabic ? 'طريقة الإتلاف' : 'Disposal Method';
   String get recordDisposalTitle => isArabic ? 'إتلاف مواد منتهية الصلاحية' : 'Dispose Expired Materials';
+  String get disposeExpiredUnitsTitle => isArabic ? 'إتلاف الوحدات منتهية الصلاحية' : 'Dispose Expired Units';
+  String disposeConfirmMessage(String name) => isArabic
+      ? 'هل أنت متأكد من رغبتك في إزالة جميع الوحدات منتهية الصلاحية لـ $name؟ هذا الإجراء يزيل فقط الدفعات المنتهية ولا يمكن التراجع عنه.'
+      : 'Are you sure you want to remove all expired units for $name? This action only removes expired batches and cannot be undone.';
+  String get disposeAction => isArabic ? 'إتلاف' : 'Dispose';
+  String get disposalSuccess => isArabic ? 'تم إتلاف الوحدات المنتهية بنجاح.' : 'Expired units disposed successfully.';
   String get toggleStatus => isArabic ? 'تغيير الحالة' : 'Toggle Status';
   String get changeRole => isArabic ? 'تغيير الدور' : 'Change Role';
   String get resetPassword => isArabic ? 'إعادة تعيين كلمة المرور' : 'Reset Password';
