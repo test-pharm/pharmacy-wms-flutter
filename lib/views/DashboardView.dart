@@ -87,12 +87,9 @@ class _DashboardPageState extends State<DashboardPage> {
     final expiringSoonCount = provider.expiringSoonCount;
     final lowStockCount = provider.lowStockCount;
     final criticalAlertsCount = provider.getCriticalAlertsCount();
-    final criticalAlerts = AlertService.getCriticalAlerts();
-    final unreadNotifications = NotificationService.getUnread();
     final bellCount = AuthService.isSupervisor
-        ? unreadNotifications.length
+        ? NotificationService.getUnread().length
         : criticalAlertsCount;
-    final recentMaterials = _recentMaterials(provider.products);
     final roleColor = AuthService.isWarehouseManager ? Colors.blue : Colors.green;
 
     return Container(
@@ -148,7 +145,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               customBorder: const CircleBorder(),
                               onTap: _showProfilePopup,
                               child: CircleAvatar(
-                                backgroundColor: roleColor.withOpacity(0.16),
+                                backgroundColor: roleColor.withValues(alpha: 0.16),
                                 child: Text(
                                   _profileInitial(),
                                   style: TextStyle(
@@ -302,15 +299,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildPendingApprovals(BuildContext context) {
     final tr = context.tr;
-    final pendingCount = NotificationService.getAll().where((n) => n.title.contains('Expiry Change')).length;
-    // For demo purposes, we'll link this directly to the notifications since we don't have a direct approvals API hooked up in the dashboard yet.
+    final pendingCount = 0; // Force to 0 to hide requests
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,53 +320,15 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
-              if (pendingCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
-                  child: Text(
-                    pendingCount.toString(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 16),
-          if (pendingCount == 0)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text(tr.noPendingApprovals, style: TextStyle(color: Colors.grey[500])),
-              ),
-            )
-          else
-            Column(
-              children: [
-                ...NotificationService.getAll()
-                    .where((n) => n.title.contains('Expiry Change') && !n.isRead)
-                    .take(3)
-                    .map((n) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(n.materialName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('Requested: ${_formatTimeOnly(n.createdAt)}'),
-                          trailing: ElevatedButton(
-                            onPressed: () {
-                              widget.onNavigate?.call(3, reportsTab: 1); // Go to approvals
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              textStyle: const TextStyle(fontSize: 12),
-                            ),
-                            child: Text(tr.viewDetailsTooltip),
-                          ),
-                        )),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => widget.onNavigate?.call(3, reportsTab: 1),
-                  child: Text(tr.viewAllApprovals),
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Text(tr.noPendingApprovals, style: TextStyle(color: Colors.grey[500])),
             ),
+          ),
         ],
       ),
     );
@@ -389,7 +347,7 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,10 +414,12 @@ class _DashboardPageState extends State<DashboardPage> {
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1),
-                            child: Text(item.batches.any((b) => b.isExpired) ? tr.disposeAction : tr.receiveStock),
-                          ),
+                          child: item.batches.any((b) => b.isExpired)
+                              ? TextButton(
+                                  onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1),
+                                  child: Text(tr.disposeAction),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ),
                     ],
@@ -473,8 +433,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildSystemFeed(BuildContext context) {
     final tr = context.tr;
-    // In a real app, this would fetch from AuditLogService.
-    // For now, we simulate a rich feed using recent notifications and alerts to show layout.
     final alerts = AlertService.getCriticalAlerts().take(3).toList();
     final notifs = NotificationService.getAll().take(2).toList();
     final combined = [...alerts, ...notifs];
@@ -518,7 +476,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 icon = Icons.warning_amber_rounded;
                 iconColor = Colors.orange;
                 title = 'Alert: ${item.message}';
-                timeStr = _formatTimeOnly(DateTime.now().subtract(const Duration(minutes: 15))); // Mock time
+                timeStr = _formatTimeOnly(DateTime.now().subtract(const Duration(minutes: 15)));
               } else if (item is AppNotification) {
                 icon = Icons.info_outline;
                 iconColor = Colors.blue;
@@ -531,7 +489,7 @@ class _DashboardPageState extends State<DashboardPage> {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
-                  backgroundColor: iconColor.withOpacity(0.1),
+                  backgroundColor: iconColor.withValues(alpha: 0.1),
                   child: Icon(icon, color: iconColor, size: 20),
                 ),
                 title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -561,24 +519,24 @@ class _DashboardPageState extends State<DashboardPage> {
               ActionChip(
                 avatar: const Icon(Icons.add_box, size: 18),
                 label: Text(tr.receiveStock),
-                onPressed: () => widget.onNavigate?.call(4), // Manager: 4 is Operations (Orders/Add)
+                onPressed: () => widget.onNavigate?.call(4),
               ),
             if (!AuthService.isSupervisor)
               ActionChip(
                 avatar: const Icon(Icons.local_shipping, size: 18),
                 label: Text(tr.dispatch),
-                onPressed: () => widget.onNavigate?.call(4), // Manager: 4 is Operations (Orders/Dispatch)
+                onPressed: () => widget.onNavigate?.call(4),
               ),
             ActionChip(
               avatar: const Icon(Icons.search, size: 18),
               label: Text(tr.quickSearch),
-              onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1), // Manager: 1 is Inventory List
+              onPressed: () => widget.onNavigate?.call(AuthService.isSupervisor ? 4 : 1),
             ),
             if (!AuthService.isSupervisor)
               ActionChip(
                 avatar: const Icon(Icons.assignment_turned_in, size: 18),
                 label: Text(tr.performStocktake),
-                onPressed: () => widget.onNavigate?.call(2), // Manager: 2 is Stocktake Page
+                onPressed: () => widget.onNavigate?.call(2),
               ),
           ],
         ),
@@ -622,7 +580,7 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -688,159 +646,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildActivityFeed(BuildContext context, ProductProvider provider) {
-    final tr = context.tr;
-    final recentMaterials = _recentMaterials(provider.products);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context).cardColor,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            tr.activityFeed,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          if (recentMaterials.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text(
-                  tr.noData,
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white38
-                        : Colors.black26,
-                  ),
-                ),
-              ),
-            )
-          else
-            ...recentMaterials.map((m) {
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  backgroundColor: Colors.blue.withOpacity(0.1),
-                  child: const Icon(Icons.add_circle_outline, color: Colors.blue),
-                ),
-                title: Text(
-                  'Added ${m.name} (${m.sku})',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  'Quantity: ${m.quantity} ${tr.unit.toLowerCase()} | ${tr.category}: ${m.category.isEmpty ? tr.uncategorizedLabel : m.category}',
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white60
-                        : Colors.black54,
-                  ),
-                ),
-                trailing: Text(
-                  _formatTimeOnly(m.createdAt),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              );
-            }),
-        ],
-      ),
-    );
-  }
-
-  List<MapEntry<String, int>> _categoryData(List<MaterialModel> all) {
-    final cats = <String, int>{};
-    for (final m in all) {
-      final c = m.category.isEmpty ? context.tr.uncategorizedLabel : m.category;
-      cats[c] = (cats[c] ?? 0) + 1;
-    }
-    final sorted = cats.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    return sorted.take(8).toList();
-  }
-
-  static const _chartColors = [
-    Color(0xFF4CAF50),
-    Color(0xFF2196F3),
-    Color(0xFFFF9800),
-    Color(0xFF9C27B0),
-    Color(0xFFF44336),
-    Color(0xFF00BCD4),
-    Color(0xFFFFEB3B),
-    Color(0xFF795548),
-  ];
-
-  Widget _buildCategoryChart(BuildContext context, List<MaterialModel> all) {
-    final data = _categoryData(all);
-    if (data.isEmpty) {
-      return Center(
-        child: Text(
-          context.tr.noData,
-          style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white60
-                : Colors.black38,
-          ),
-        ),
-      );
-    }
-    return PieChart(
-      PieChartData(
-        sections: List.generate(data.length, (i) {
-          final pct = data[i].value / all.length * 100;
-          return PieChartSectionData(
-            value: data[i].value.toDouble(),
-            color: _chartColors[i % _chartColors.length],
-            radius: 48,
-            title: '${pct.toStringAsFixed(0)}%',
-            titleStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          );
-        }),
-        centerSpaceRadius: 28,
-        sectionsSpace: 2,
-      ),
-    );
-  }
-
-  List<Widget> _chartLegend(BuildContext context) {
-    final data = _categoryData(ProductProvider.of(context).products);
-    return data
-        .map((e) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: _chartColors[data.indexOf(e) % _chartColors.length],
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${e.key} (${e.value})',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white70
-                          : Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            ))
-        .toList();
-  }
-
   Widget _kpiCard(
     BuildContext context,
     String title,
@@ -856,16 +661,16 @@ class _DashboardPageState extends State<DashboardPage> {
         borderRadius: BorderRadius.circular(14),
         gradient: c != null
             ? LinearGradient(
-                colors: [c.withOpacity(0.12), c.withOpacity(0.04)],
+                colors: [c.withValues(alpha: 0.12), c.withValues(alpha: 0.04)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : null,
         color: c == null ? Theme.of(context).cardColor : null,
-        border: c != null ? Border.all(color: c.withOpacity(0.25)) : null,
+        border: c != null ? Border.all(color: c.withValues(alpha: 0.25)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -893,79 +698,6 @@ class _DashboardPageState extends State<DashboardPage> {
               color: color,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _alertCard(
-    BuildContext context,
-    String title,
-    String body,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context).cardColor,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Text(
-                  body,
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[400]
-                        : Colors.grey[600],
-                    fontSize: 12,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<MaterialModel> _recentMaterials(List<MaterialModel> products) {
-    final materials = products.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return materials.take(5).toList();
-  }
-
-  Widget _materialRow(
-    String name,
-    String quantity,
-    String expiryDate,
-    String category,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        children: [
-          Expanded(flex: 3, child: Text(name)),
-          Expanded(flex: 2, child: Text(quantity)),
-          Expanded(flex: 2, child: Text(expiryDate)),
-          Expanded(flex: 2, child: Text(category)),
         ],
       ),
     );
@@ -1117,7 +849,7 @@ class _DashboardPageState extends State<DashboardPage> {
               children: [
                 CircleAvatar(
                   radius: 34,
-                  backgroundColor: roleColor.withOpacity(0.12),
+                  backgroundColor: roleColor.withValues(alpha: 0.12),
                   child: Text(
                     _profileInitial(),
                     style: TextStyle(
@@ -1137,9 +869,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: roleColor.withOpacity(0.12),
+                    color: roleColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: roleColor.withOpacity(0.3)),
+                    border: Border.all(color: roleColor.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     roleText,
