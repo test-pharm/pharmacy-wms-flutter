@@ -95,6 +95,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
         InventoryPage(
           initialAvailabilityFilter: _inventoryInitialAvailabilityFilter,
         ),
+        const UserManagementPage(),
       ];
     }
     return [
@@ -117,7 +118,6 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
       const OperationsPage(),
       const AuditLogPage(),
       const ThresholdSettingsPage(),
-      const UserManagementPage(),
       const CategoriesPage(),
     ];
   }
@@ -129,6 +129,8 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
         _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 1),
         _MenuItem(Icons.bar_chart, tr.reports, 2),
         _MenuItem(Icons.history, tr.auditLog, 3),
+        _MenuItem(Icons.inventory_2, tr.inventory, 4),
+        _MenuItem(Icons.people, tr.userManagement, 5),
       ];
     }
     return [
@@ -139,8 +141,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
       _MenuItem(Icons.assessment_outlined, tr.ordersHistory, 4),
       _MenuItem(Icons.history, tr.auditLog, 5),
       _MenuItem(Icons.settings, tr.settings, 6),
-      _MenuItem(Icons.people, tr.userManagement, 7),
-      _MenuItem(Icons.category, tr.categoriesManagement, 8),
+      _MenuItem(Icons.category, tr.categoriesManagement, 7),
     ];
   }
 

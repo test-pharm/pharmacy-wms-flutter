@@ -49,7 +49,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
     final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final passwordCtrl = TextEditingController();
-    String selectedRole = 'User'; // Default to User (Supervisor)
+    String selectedRole = 'Supervisor'; // Default to Supervisor
     bool loading = false;
     String? dialogError;
 
@@ -107,7 +107,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       ),
                       items: const [
                         DropdownMenuItem(value: 'Admin', child: Text('Warehouse Manager (Admin)')),
-                        DropdownMenuItem(value: 'User', child: Text('Supervisor (User)')),
+                        DropdownMenuItem(value: 'Supervisor', child: Text('Supervisor')),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -194,7 +194,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
   }
 
   void _showChangeRoleDialog(Map<String, dynamic> user) {
-    String selectedRole = user['role'] == 'Admin' ? 'Admin' : 'User';
+    String selectedRole = user['role'] == 'Admin' ? 'Admin' : 'Supervisor';
     bool loading = false;
     String? dialogError;
 
@@ -213,7 +213,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   decoration: InputDecoration(labelText: tr.roleLabel),
                   items: const [
                     DropdownMenuItem(value: 'Admin', child: Text('Warehouse Manager (Admin)')),
-                    DropdownMenuItem(value: 'User', child: Text('Supervisor (User)')),
+                    DropdownMenuItem(value: 'Supervisor', child: Text('Supervisor')),
                   ],
                   onChanged: (val) {
                     if (val != null) {
