@@ -762,21 +762,26 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       _success = null;
     });
     try {
+      debugPrint('[UserInfo] POST: $_baseUrl$path');
       final response = await http
           .post(
             Uri.parse('$_baseUrl$path'),
-            headers: AuthService.authHeaders,
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 60));
-      if (!mounted) return;
+
+      debugPrint('[UserInfo] Status: ${response.statusCode}');
+      debugPrint('[UserInfo] Response: ${response.body}');
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         onSuccess();
       } else {
         setState(() => _error = _extractError(response));
       }
-    } catch (_) {
-      if (mounted) setState(() => _error = context.tr.requestFailedRetry);
+    } catch (e) {
+      debugPrint('[UserInfo] Catch Error: $e');
+      if (mounted) setState(() => _error = '${context.tr.requestFailedRetry} ($e)');
     }
   finally {
       if (mounted) setState(() => _loading = false);
