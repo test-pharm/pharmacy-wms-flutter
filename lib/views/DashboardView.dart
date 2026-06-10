@@ -299,9 +299,15 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildPendingApprovals(BuildContext context) {
     final tr = context.tr;
-    final pendingRequests = NotificationService.getAll()
-        .where((n) => n.title.contains('Expiry Change') && !n.isRead)
-        .toList();
+    // Broaden filter to match both English and Arabic titles for edit requests
+    final pendingRequests = NotificationService.getAll().where((n) {
+      final isEditRequest = n.title.contains('Edit') || 
+                            n.title.contains('Expiry') || 
+                            n.title.contains('تعديل') ||
+                            n.title == tr.editRequests ||
+                            n.title == tr.orderTypeEdit;
+      return isEditRequest && !n.isRead;
+    }).toList();
     final pendingCount = pendingRequests.length;
 
     return Container(
