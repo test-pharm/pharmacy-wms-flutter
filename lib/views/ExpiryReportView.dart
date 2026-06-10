@@ -27,7 +27,7 @@ class _ExpiryReportPageState extends State<ExpiryReportPage> {
     try {
       final response = await http
           .get(Uri.parse('${ApiConfig.baseUrl}/Dashboard/expiry-report'), headers: AuthService.authHeaders)
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 60));
       final decoded = _decodeBody(response.body);
       if (response.statusCode == 200) {
         List<Map<String, dynamic>> items;

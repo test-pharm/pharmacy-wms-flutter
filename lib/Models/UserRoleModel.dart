@@ -232,7 +232,7 @@ class AuthService {
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode({'email': email.trim(), 'password': password}),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 60));
 
       final decoded = _decodeBody(response.body);
 
@@ -322,7 +322,7 @@ class AuthService {
               'phoneNumber': phoneNumber.trim(),
             }),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 60));
 
       final decoded = _decodeBody(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {

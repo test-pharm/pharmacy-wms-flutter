@@ -73,7 +73,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
               'phoneNumber': _phoneController.text.trim(),
             }),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 60));
 
       if (!mounted) return;
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -768,7 +768,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             headers: AuthService.authHeaders,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 60));
       if (!mounted) return;
       if (response.statusCode >= 200 && response.statusCode < 300) {
         onSuccess();
