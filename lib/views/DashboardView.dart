@@ -570,6 +570,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildQuickActions(BuildContext context) {
     final tr = context.tr;
+    final provider = ProductProvider.of(context, listen: false);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -586,13 +588,23 @@ class _DashboardPageState extends State<DashboardPage> {
               ActionChip(
                 avatar: const Icon(Icons.add_box, size: 18),
                 label: Text(tr.receiveStock),
-                onPressed: () => widget.onNavigate?.call(4),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AddMaterialWizard(provider: provider),
+                  );
+                },
               ),
             if (!AuthService.isSupervisor)
               ActionChip(
                 avatar: const Icon(Icons.local_shipping, size: 18),
                 label: Text(tr.dispatch),
-                onPressed: () => widget.onNavigate?.call(4),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => DispatchMaterialWizard(provider: provider),
+                  );
+                },
               ),
             ActionChip(
               avatar: const Icon(Icons.search, size: 18),
