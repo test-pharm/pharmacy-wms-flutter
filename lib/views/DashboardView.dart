@@ -9,6 +9,8 @@ import 'package:pharmacy_wms/Models/alertModel.dart';
 import 'package:pharmacy_wms/Services/notificationService.dart';
 import 'package:pharmacy_wms/Services/alertService.dart';
 import 'package:pharmacy_wms/Services/ApprovalService.dart';
+import 'package:pharmacy_wms/widgets/AddMaterialWizard.dart';
+import 'package:pharmacy_wms/widgets/DispatchMaterialWizard.dart';
 import 'package:pharmacy_wms/views/UserInfo.dart';
 import 'package:pharmacy_wms/widgets/skeletons.dart';
 import 'package:pharmacy_wms/widgets/animated_counter.dart';
