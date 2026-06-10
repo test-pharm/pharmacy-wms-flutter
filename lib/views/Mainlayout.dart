@@ -30,6 +30,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
   bool _sidebarCollapsed = false;
   int _reportsInitialTabIndex = 0;
   String? _inventoryInitialAvailabilityFilter;
+  String? _operationsInitialFilter;
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
       _selectedIndex = index;
       _reportsInitialTabIndex = 0;
       _inventoryInitialAvailabilityFilter = null;
+      _operationsInitialFilter = null;
     });
     final w = MediaQuery.of(context).size.width;
     if (w < 900 && !_sidebarCollapsed) {
@@ -78,15 +80,19 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
     if (AuthService.isSupervisor) {
       return [
         DashboardPage(
-          onNavigate: (index, {String? availabilityFilter, int? reportsTab}) {
+          onNavigate: (index, {String? availabilityFilter, int? reportsTab, String? operationFilter}) {
             setState(() {
               _selectedIndex = index;
               _reportsInitialTabIndex = reportsTab ?? 0;
               _inventoryInitialAvailabilityFilter = availabilityFilter;
+              _operationsInitialFilter = operationFilter;
             });
           },
         ),
-        OperationsPage(onGoToOrders: () => _onSelect(1)),
+        OperationsPage(
+          onGoToOrders: () => _onSelect(1),
+          initialFilter: _operationsInitialFilter,
+        ),
         ReportsPage(
           onGoToOrders: () => _onSelect(1),
           initialTabIndex: _reportsInitialTabIndex,
@@ -100,11 +106,12 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
     }
     return [
       DashboardPage(
-        onNavigate: (index, {String? availabilityFilter, int? reportsTab}) {
+        onNavigate: (index, {String? availabilityFilter, int? reportsTab, String? operationFilter}) {
           setState(() {
             _selectedIndex = index;
             _reportsInitialTabIndex = reportsTab ?? 0;
             _inventoryInitialAvailabilityFilter = availabilityFilter;
+            _operationsInitialFilter = operationFilter;
           });
         },
       ),
@@ -115,7 +122,9 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
       ReportsPage(
         initialTabIndex: _reportsInitialTabIndex,
       ),
-      const OperationsPage(),
+      OperationsPage(
+        initialFilter: _operationsInitialFilter,
+      ),
       const AuditLogPage(),
       const ThresholdSettingsPage(),
       const CategoriesPage(),

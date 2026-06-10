@@ -14,7 +14,7 @@ import 'package:pharmacy_wms/widgets/skeletons.dart';
 import 'package:pharmacy_wms/widgets/animated_counter.dart';
 
 class DashboardPage extends StatefulWidget {
-  final Function(int index, {String? availabilityFilter, int? reportsTab})? onNavigate;
+  final Function(int index, {String? availabilityFilter, int? reportsTab, String? operationFilter})? onNavigate;
   const DashboardPage({super.key, this.onNavigate});
 
   @override
@@ -369,7 +369,10 @@ class _DashboardPageState extends State<DashboardPage> {
                     subtitle: Text('Requested: ${_formatTimeOnly(date)}'),
                     trailing: ElevatedButton(
                       onPressed: () {
-                        widget.onNavigate?.call(3, reportsTab: 1); // Go to approvals
+                        widget.onNavigate?.call(
+                          AuthService.isSupervisor ? 1 : 4,
+                          operationFilter: 'Edit',
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -381,7 +384,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 }),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => widget.onNavigate?.call(3, reportsTab: 1),
+                  onPressed: () => widget.onNavigate?.call(
+                    AuthService.isSupervisor ? 1 : 4,
+                    operationFilter: 'Edit',
+                  ),
                   child: Text(tr.viewAllApprovals),
                 ),
               ],

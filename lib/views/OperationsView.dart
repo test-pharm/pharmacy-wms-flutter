@@ -61,7 +61,8 @@ class WarehouseOperation {
 
 class OperationsPage extends StatefulWidget {
   final VoidCallback? onGoToOrders;
-  const OperationsPage({super.key, this.onGoToOrders});
+  final String? initialFilter;
+  const OperationsPage({super.key, this.onGoToOrders, this.initialFilter});
   @override
   State<OperationsPage> createState() => _OperationsPageState();
 }
@@ -80,9 +81,11 @@ class _OperationsPageState extends State<OperationsPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialFilter == 'Edit') {
+      _selectedType = OperationType.expiryEdit;
+    }
     _load();
     OrderService.changes.addListener(_load);
-
   }
 
   @override
