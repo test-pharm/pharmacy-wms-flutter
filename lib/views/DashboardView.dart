@@ -8,6 +8,7 @@ import 'package:pharmacy_wms/Models/materialModel.dart';
 import 'package:pharmacy_wms/Models/alertModel.dart';
 import 'package:pharmacy_wms/Services/notificationService.dart';
 import 'package:pharmacy_wms/Services/alertService.dart';
+import 'package:pharmacy_wms/Services/ApprovalService.dart';
 import 'package:pharmacy_wms/views/UserInfo.dart';
 import 'package:pharmacy_wms/widgets/skeletons.dart';
 import 'package:pharmacy_wms/widgets/animated_counter.dart';
@@ -26,6 +27,7 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _alertsCollapsed = false;
   DateTime _lastSyncedTime = DateTime.now();
   DateTime _currentTime = DateTime.now();
+  List<Map<String, dynamic>> _pendingApprovals = [];
 
   String _getTimeOfDayGreeting() {
     final hour = _currentTime.hour;
@@ -58,14 +60,29 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     NotificationService.changes.addListener(_handleNotificationChange);
+    _fetchDashboardData();
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      final provider = ProductProvider.of(context, listen: false);
-      provider.loadProducts();
-      if (mounted) setState(() => _lastSyncedTime = DateTime.now());
+      _fetchDashboardData();
     });
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _currentTime = DateTime.now());
     });
+  }
+
+  Future<void> _fetchDashboardData() async {
+    final provider = ProductProvider.of(context, listen: false);
+    await provider.loadProducts();
+    
+    if (AuthService.isWarehouseManager) {
+      try {
+        final approvals = await ApprovalService.fetchPendingApprovals();
+        if (mounted) setState(() => _pendingApprovals = approvals);
+      } catch (e) {
+        debugPrint('[Dashboard] Failed to fetch approvals: $e');
+      }
+    }
+    
+    if (mounted) setState(() => _lastSyncedTime = DateTime.now());
   }
 
   @override
@@ -87,8 +104,9 @@ class _DashboardPageState extends State<DashboardPage> {
     final expiringSoonCount = provider.expiringSoonCount;
     final lowStockCount = provider.lowStockCount;
     final criticalAlertsCount = provider.getCriticalAlertsCount();
-    final bellCount = AuthService.isSupervisor
-        ? NotificationService.getUnread().length
+    
+    final bellCount = AuthService.isWarehouseManager
+        ? _pendingApprovals.length
         : criticalAlertsCount;
     final roleColor = AuthService.isWarehouseManager ? Colors.blue : Colors.green;
 
@@ -194,8 +212,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               children: [
                                 ElevatedButton.icon(
                                   onPressed: () {
-                                    provider.loadProducts();
-                                    setState(() => _lastSyncedTime = DateTime.now());
+                                    _fetchDashboardData();
                                   },
                                   icon: const Icon(Icons.refresh),
                                   label: Text(tr.refresh),
@@ -299,16 +316,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildPendingApprovals(BuildContext context) {
     final tr = context.tr;
-    // Broaden filter to match both English and Arabic titles for edit requests
-    final pendingRequests = NotificationService.getAll().where((n) {
-      final isEditRequest = n.title.contains('Edit') || 
-                            n.title.contains('Expiry') || 
-                            n.title.contains('تعديل') ||
-                            n.title == tr.editRequests ||
-                            n.title == tr.orderTypeEdit;
-      return isEditRequest && !n.isRead;
-    }).toList();
-    final pendingCount = pendingRequests.length;
+    final pendingCount = _pendingApprovals.length;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -351,21 +359,26 @@ class _DashboardPageState extends State<DashboardPage> {
           else
             Column(
               children: [
-                ...pendingRequests.take(3).map((n) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(n.materialName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('Requested: ${_formatTimeOnly(n.createdAt)}'),
-                      trailing: ElevatedButton(
-                        onPressed: () {
-                          widget.onNavigate?.call(3, reportsTab: 1); // Go to approvals
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                        child: Text(tr.viewDetailsTooltip),
+                ..._pendingApprovals.take(3).map((req) {
+                  final productName = (req['productName'] ?? 'Unknown').toString();
+                  final date = DateTime.tryParse(req['requestedAt']?.toString() ?? '') ?? DateTime.now();
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(productName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text('Requested: ${_formatTimeOnly(date)}'),
+                    trailing: ElevatedButton(
+                      onPressed: () {
+                        widget.onNavigate?.call(3, reportsTab: 1); // Go to approvals
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: const TextStyle(fontSize: 12),
                       ),
-                    )),
+                      child: Text(tr.viewDetailsTooltip),
+                    ),
+                  );
+                }),
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => widget.onNavigate?.call(3, reportsTab: 1),
