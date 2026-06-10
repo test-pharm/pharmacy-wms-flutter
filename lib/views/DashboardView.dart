@@ -360,7 +360,9 @@ class _DashboardPageState extends State<DashboardPage> {
             Column(
               children: [
                 ..._pendingApprovals.take(3).map((req) {
-                  final productName = (req['productName'] ?? 'Unknown').toString();
+                  final batch = req['batch'] as Map<String, dynamic>?;
+                  final product = batch?['product'] as Map<String, dynamic>?;
+                  final productName = (product?['materialName'] ?? req['productName'] ?? 'Unknown').toString();
                   final date = DateTime.tryParse(req['requestedAt']?.toString() ?? '') ?? DateTime.now();
 
                   return ListTile(
